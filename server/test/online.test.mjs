@@ -260,12 +260,12 @@ async function edgeCases() {
   const over = new Bot('넘침', code);
   await over.connect();
   assert.strictEqual(over.errors[0] && over.errors[0].code, 'full');
-  // 12명 시작 → 짧게(6단계)
+  // 12명 시작 → 짧게(5단계, 맞히기로 끝남)
   a.send({ t: 'settings', settings: { short: true } });
   await until(() => a.state.room.settings.short);
   a.send({ t: 'start' });
   await until(() => a.status === 'playing');
-  assert.strictEqual(a.state.game.steps, 6);
+  assert.strictEqual(a.state.game.steps, 5);
   assert.strictEqual(a.state.game.n, 12);
   // 큰 그림도 됨 (점 3만 개 가까이)
   const big = { ops: [] };

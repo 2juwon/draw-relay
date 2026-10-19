@@ -12,7 +12,7 @@
 
   const MIN_PLAYERS = 3;
   const MAX_PLAYERS = 12;
-  const SHORT_STEPS = 6;
+  const SHORT_STEPS = 5;           // 짧게 하기: 최대 5칸 (늘 맞히기로 끝나게 홀수)
   const TEXT_MAX = 60;
   const W = 1000, H = 750;          // 그림 좌표 (가로 1000 × 세로 750)
   const COLORS = 18;                // 팔레트 색 수 (0번 = 흰색, 지우개도 흰색)
@@ -81,6 +81,14 @@
     return { ops };
   }
 
+  /* 이야기 길이: 사람 수만큼(짧게면 최대 5칸). 다만 칸 수가 짝수면 마지막이 그림이 되므로 한 칸 줄여
+   * 늘 '맞히기'로 끝나게 함 (한 칸을 더 붙이면 처음 쓴 사람이 자기 이야기를 맞히게 되어 답을 알고 맞히는 꼴) */
+  function stepsFor(n, short) {
+    let k = short ? Math.min(n, SHORT_STEPS) : n;
+    if (k % 2 === 0) k -= 1;
+    return Math.max(3, k);
+  }
+
   function kindOf(step) { return step === 0 ? 'prompt' : step % 2 ? 'draw' : 'guess'; }
 
   /* players: [{ name }] (자리 순서), settings, seed */
@@ -98,7 +106,7 @@
       v: 1, n, seed: seed >>> 0,
       players: players.map((p) => ({ name: String(p.name || '') })),
       settings: st,
-      steps: st.short ? Math.min(n, SHORT_STEPS) : n,
+      steps: stepsFor(n, st.short),
       ring, pos,
       step: 0,
       phase: 'play',             // play → reveal → end
@@ -240,7 +248,7 @@
   return {
     MIN_PLAYERS, MAX_PLAYERS, SHORT_STEPS, TEXT_MAX, W, H, COLORS, SIZES, MAX_OPS, MAX_POINTS,
     DEFAULT_SETTINGS, DRAW_SECS, TEXT_SECS,
-    mulberry32, cleanSettings, cleanText, cleanDrawing, kindOf, createGame, seatOf, chainOf, taskFor, publicEntry,
+    mulberry32, stepsFor, cleanSettings, cleanText, cleanDrawing, kindOf, createGame, seatOf, chainOf, taskFor, publicEntry,
     submit, unsubmit, isDone, doneCount, fillMissing, advance, revealNext, revealAll, isRevealed, summary,
   };
 });

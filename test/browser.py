@@ -107,8 +107,10 @@ with sync_playwright() as p:
     shot(pages[1], '06-waiting')
     pages[3].press('#work-text', 'Enter')
 
-    # 그리기 / 맞히기 반복
-    for step in range(1, 4):
+    # 그리기 / 맞히기 반복 (4명은 짝수라 3칸: 제시어 → 그림 → 맞히기로 끝남)
+    STEPS = host.evaluate('window.__DR.S.st.game.steps')
+    assert STEPS == 3, STEPS
+    for step in range(1, STEPS):
         for pg in pages:
             pg.wait_for_function(f"window.__DR.S.task && window.__DR.S.task.step === {step} && document.getElementById('btn-submit')", timeout=20000)
         kind = pages[0].evaluate('window.__DR.S.task.kind')
@@ -129,7 +131,7 @@ with sync_playwright() as p:
                 if step == 2 and i == 0:
                     time.sleep(1.2)
                     shot(pg, '09-guess')
-            if not (kind == 'draw' and i == 3 and step == 3):  # 마지막 그리기 한 명은 시간 초과로
+            if not (kind == 'draw' and i == 3 and step == STEPS - 2):  # 마지막 그리기 한 명은 시간 초과로
                 pg.click('#btn-submit')
             if step == 1 and i == 2:
                 # 고치기 한 번 (마지막 사람이 내기 전에)
@@ -146,7 +148,7 @@ with sync_playwright() as p:
     shot(host, '10-reveal-1')
     shot(pages[1], '11-reveal-guest')
     total = 0
-    for k in range(4 * 4):
+    for k in range(4 * STEPS):
         info = host.evaluate('window.__DR.S.st.game.reveal')
         if info is None: break
         if k == 2:
@@ -174,11 +176,11 @@ with sync_playwright() as p:
     import shutil; shutil.copy(path, f'{OUT}/16-story.png')
     # 같은 이야기에 모든 칸이 있는지
     cnt = host.evaluate("Object.keys(window.__DR.S.entries).length")
-    assert cnt == 16, cnt
+    assert cnt == 4 * STEPS, cnt
     # 새로고침해도 앨범으로 돌아옴
     pages[1].reload()
     wait_screen(pages[1], 's-album')
-    pages[1].wait_for_function("Object.keys(window.__DR.S.entries).length === 16")
+    pages[1].wait_for_function("Object.keys(window.__DR.S.entries).length === " + str(4 * STEPS))
     # 한 판 더
     host.click('#btn-again')
     for pg in pages: wait_screen(pg, 's-room')

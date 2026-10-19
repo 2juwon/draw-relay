@@ -314,7 +314,7 @@ dialog .sheet { padding-bottom: 18px; }
         <li><span><b>맞히기</b> — 넘어온 그림만 보고 뭔지 적어요. 그다음 사람은 또 그 글을 그려요.</span></li>
         <li><span><b>다 같이 보기</b> — 이야기가 한 바퀴 돌면, 처음 제시어가 어떻게 변했는지 하나씩 펼쳐 봐요.</span></li>
       </ol>
-      <p class="muted" style="font-size:14px;margin:6px 0 0">3명부터 12명까지, 각자 휴대폰으로 해요. 이야기는 사람 수만큼 생겨요.</p>
+      <p class="muted" style="font-size:14px;margin:6px 0 0">3명부터 12명까지, 각자 휴대폰으로 해요. 이야기는 사람 수만큼 생기고, 늘 맞히기로 끝나요.</p>
     </div>
     <p class="foot"><button class="linkish" id="btn-feedback">의견 보내기</button></p>
   </div>
@@ -415,7 +415,7 @@ dialog .sheet { padding-bottom: 18px; }
 
   const MIN_PLAYERS = 3;
   const MAX_PLAYERS = 12;
-  const SHORT_STEPS = 6;
+  const SHORT_STEPS = 5;           // 짧게 하기: 최대 5칸 (늘 맞히기로 끝나게 홀수)
   const TEXT_MAX = 60;
   const W = 1000, H = 750;          // 그림 좌표 (가로 1000 × 세로 750)
   const COLORS = 18;                // 팔레트 색 수 (0번 = 흰색, 지우개도 흰색)
@@ -484,6 +484,14 @@ dialog .sheet { padding-bottom: 18px; }
     return { ops };
   }
 
+  /* 이야기 길이: 사람 수만큼(짧게면 최대 5칸). 다만 칸 수가 짝수면 마지막이 그림이 되므로 한 칸 줄여
+   * 늘 '맞히기'로 끝나게 함 (한 칸을 더 붙이면 처음 쓴 사람이 자기 이야기를 맞히게 되어 답을 알고 맞히는 꼴) */
+  function stepsFor(n, short) {
+    let k = short ? Math.min(n, SHORT_STEPS) : n;
+    if (k % 2 === 0) k -= 1;
+    return Math.max(3, k);
+  }
+
   function kindOf(step) { return step === 0 ? 'prompt' : step % 2 ? 'draw' : 'guess'; }
 
   /* players: [{ name }] (자리 순서), settings, seed */
@@ -501,7 +509,7 @@ dialog .sheet { padding-bottom: 18px; }
       v: 1, n, seed: seed >>> 0,
       players: players.map((p) => ({ name: String(p.name || '') })),
       settings: st,
-      steps: st.short ? Math.min(n, SHORT_STEPS) : n,
+      steps: stepsFor(n, st.short),
       ring, pos,
       step: 0,
       phase: 'play',             // play → reveal → end
@@ -643,7 +651,7 @@ dialog .sheet { padding-bottom: 18px; }
   return {
     MIN_PLAYERS, MAX_PLAYERS, SHORT_STEPS, TEXT_MAX, W, H, COLORS, SIZES, MAX_OPS, MAX_POINTS,
     DEFAULT_SETTINGS, DRAW_SECS, TEXT_SECS,
-    mulberry32, cleanSettings, cleanText, cleanDrawing, kindOf, createGame, seatOf, chainOf, taskFor, publicEntry,
+    mulberry32, stepsFor, cleanSettings, cleanText, cleanDrawing, kindOf, createGame, seatOf, chainOf, taskFor, publicEntry,
     submit, unsubmit, isDone, doneCount, fillMissing, advance, revealNext, revealAll, isRevealed, summary,
   };
 });</script>
@@ -963,7 +971,7 @@ dialog .sheet { padding-bottom: 18px; }
 (function () {
   'use strict';
   const SERVER = 'https://draw-relay.2juwon.workers.dev';
-  const BUILD = '2026-10-19T04:52';
+  const BUILD = '2026-10-19T05:49';
   const AV = ['#e5383b', '#2667ff', '#2bb673', '#ff8c1a', '#8f5bd8', '#ff5c9a', '#1fa39a', '#e0a800', '#8a5a3b', '#3aa6e8', '#6f9c1e', '#1d3a8a'];
   const REACTS = ['❤️', '😂', '👏', '😮'];
   const $ = (s) => document.querySelector(s);
@@ -1250,7 +1258,7 @@ dialog .sheet { padding-bottom: 18px; }
     seg($('#set-text'), DR.TEXT_SECS.map((v) => [v, `${v}초`]), s.textSec, host, (v) => send({ textSec: v }));
     seg($('#set-len'), [[false, '모두 한 번씩'], [true, `짧게 (${DR.SHORT_STEPS}칸)`]], s.short, host, (v) => send({ short: v }));
     const n = people.length;
-    const steps = s.short ? Math.min(n, DR.SHORT_STEPS) : n;
+    const steps = DR.stepsFor(Math.max(n, DR.MIN_PLAYERS), s.short);
     const draws = Math.floor(steps / 2), texts = steps - draws;
     const mins = Math.max(1, Math.round((draws * s.drawSec + texts * s.textSec) / 60));
     $('#set-len-note').textContent = n >= DR.MIN_PLAYERS ? `지금 ${n}명이면 이야기마다 ${steps}칸 · 그리는 시간까지 약 ${mins}분` : '';

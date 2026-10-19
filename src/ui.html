@@ -297,7 +297,7 @@ dialog .sheet { padding-bottom: 18px; }
         <li><span><b>맞히기</b> — 넘어온 그림만 보고 뭔지 적어요. 그다음 사람은 또 그 글을 그려요.</span></li>
         <li><span><b>다 같이 보기</b> — 이야기가 한 바퀴 돌면, 처음 제시어가 어떻게 변했는지 하나씩 펼쳐 봐요.</span></li>
       </ol>
-      <p class="muted" style="font-size:14px;margin:6px 0 0">3명부터 12명까지, 각자 휴대폰으로 해요. 이야기는 사람 수만큼 생겨요.</p>
+      <p class="muted" style="font-size:14px;margin:6px 0 0">3명부터 12명까지, 각자 휴대폰으로 해요. 이야기는 사람 수만큼 생기고, 늘 맞히기로 끝나요.</p>
     </div>
     <p class="foot"><button class="linkish" id="btn-feedback">의견 보내기</button></p>
   </div>
@@ -678,7 +678,7 @@ dialog .sheet { padding-bottom: 18px; }
     seg($('#set-text'), DR.TEXT_SECS.map((v) => [v, `${v}초`]), s.textSec, host, (v) => send({ textSec: v }));
     seg($('#set-len'), [[false, '모두 한 번씩'], [true, `짧게 (${DR.SHORT_STEPS}칸)`]], s.short, host, (v) => send({ short: v }));
     const n = people.length;
-    const steps = s.short ? Math.min(n, DR.SHORT_STEPS) : n;
+    const steps = DR.stepsFor(Math.max(n, DR.MIN_PLAYERS), s.short);
     const draws = Math.floor(steps / 2), texts = steps - draws;
     const mins = Math.max(1, Math.round((draws * s.drawSec + texts * s.textSec) / 60));
     $('#set-len-note').textContent = n >= DR.MIN_PLAYERS ? `지금 ${n}명이면 이야기마다 ${steps}칸 · 그리는 시간까지 약 ${mins}분` : '';

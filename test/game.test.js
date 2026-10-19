@@ -50,10 +50,17 @@ t('단계 종류: 제시어 → 그리기 → 맞히기 반복', () => {
   assert.deepStrictEqual([0, 1, 2, 3, 4, 5].map(DR.kindOf), ['prompt', 'draw', 'guess', 'draw', 'guess', 'draw']);
 });
 
-t('짧게 하기는 최대 6단계', () => {
-  assert.strictEqual(DR.createGame({ players: players(9), seed: 3, settings: { short: true } }).steps, 6);
-  assert.strictEqual(DR.createGame({ players: players(4), seed: 3, settings: { short: true } }).steps, 4);
+t('이야기 길이: 사람 수, 짧게면 최대 5칸, 늘 맞히기로 끝남', () => {
+  assert.strictEqual(DR.createGame({ players: players(9), seed: 3, settings: { short: true } }).steps, 5);
+  assert.strictEqual(DR.createGame({ players: players(4), seed: 3, settings: { short: true } }).steps, 3);
   assert.strictEqual(DR.createGame({ players: players(9), seed: 3 }).steps, 9);
+  assert.strictEqual(DR.createGame({ players: players(8), seed: 3 }).steps, 7);
+  assert.strictEqual(DR.createGame({ players: players(3), seed: 3 }).steps, 3);
+  for (let n = 3; n <= 12; n++) for (const short of [false, true]) {
+    const k = DR.stepsFor(n, short);
+    assert.strictEqual(DR.kindOf(k - 1), 'guess', `${n}명 short=${short}`);
+    assert.ok(k <= n);
+  }
 });
 
 t('할 일에는 바로 앞 칸만 보임', () => {
