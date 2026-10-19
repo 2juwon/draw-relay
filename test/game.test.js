@@ -284,6 +284,13 @@ t('정교한 시체: 머리·몸통·다리 3칸, 앞 사람 그림은 아래쪽
     playStepMode(g);
     assert.strictEqual(g.phase, 'reveal');
     assert.strictEqual(DR.taskFor(g, 0), null);
+    // 발표: 그림 하나(머리·몸통·다리)가 한 번에 펼쳐지고, 넘기면 다음 그림
+    assert.deepStrictEqual(g.reveal, { chain: 0, idx: 2 });
+    assert.ok(DR.isRevealed(g, 0, 2) && !DR.isRevealed(g, 1, 0));
+    assert.deepStrictEqual(DR.revealNext(g), { type: 'chain', chain: 1, idx: 2 });
+    let k = 1;
+    while (DR.revealNext(g).type !== 'end') k++;
+    assert.strictEqual(k, n - 1, '그림 수만큼 넘김');
   }
 });
 

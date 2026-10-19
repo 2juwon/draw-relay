@@ -230,7 +230,7 @@ export class Room extends DurableObject {
           const res = msg.t === 'all' ? DR.revealAll(g) : DR.revealNext(g);
           if (!res) return;
           if (res.type === 'end') { r.status = 'ended'; await this.afterChange(); return this.sendAll(); }
-          if (res.type === 'chain') this.sendEntries(res.chain, 0, 0);
+          if (res.type === 'chain') this.sendEntries(res.chain, 0, res.idx);
           else this.sendEntries(res.chain, before.chain === res.chain ? before.idx + 1 : 0, res.idx);
           return this.afterChange();
         }
@@ -362,7 +362,7 @@ export class Room extends DurableObject {
       r.status = 'reveal';
       await this.arm(null);
       await this.afterChange();
-      this.sendEntries(0, 0, 0);
+      this.sendEntries(0, 0, g.reveal.idx);
       return;
     }
     return this.beginStep();

@@ -131,7 +131,7 @@
     let total = 0;
     const weights = ops.map((o) => (o.f ? 6 : Math.max(2, o.p.length / 2)));
     weights.forEach((w) => { total += w; });
-    const dur = opts.duration || Math.max(1200, Math.min(5000, total * 9));
+    const dur = opts.duration || Math.max(opts.minDuration || 1200, Math.min(opts.maxDuration || 5000, total * 9));
     const start = performance.now();
     let stopped = false;
     let doneIdx = 0;   // 끝까지 그린 op 수

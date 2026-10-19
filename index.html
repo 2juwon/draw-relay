@@ -293,6 +293,17 @@ dialog .sheet { padding-bottom: 18px; }
 .feed.corpse .item + .item .card { border-top: 1px dashed rgba(35,32,28,.16); }
 .feed.corpse .item .card.empty { min-height: 120px; display: grid; place-items: center; background: var(--paper); }
 .feed.corpse .item .rx { position: absolute; left: 10px; bottom: 8px; margin: 0; z-index: 2; }
+.creature { display: flex; flex-direction: column; align-items: center; }
+.creature-stack { position: relative; background: #fff; border-radius: 6px; overflow: hidden; line-height: 0; box-shadow: 0 12px 22px -12px var(--kraft-shadow), 0 1px 0 rgba(35,32,28,.1); max-width: 100%; }
+.creature-stack canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.creature-stack .replay { position: absolute; right: 8px; bottom: 8px; }
+.creature-who { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
+.creature-who .chip { display: inline-flex; gap: 6px; align-items: center; background: rgba(255,253,247,.88); border-radius: 999px; padding: 2px 10px 2px 3px; font-size: 14px; color: #2a1d0c; }
+.creature-who .chip.now { box-shadow: 0 0 0 2px var(--ink); }
+.creature .rx { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.creature .rx span { font-size: 14px; background: rgba(255,253,247,.75); border-radius: 999px; padding: 1px 9px; }
+.creature .stamp { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-6deg); font-family: var(--font-hand); font-weight: 700; font-size: 34px; line-height: 1.2; color: var(--red); border: 3px solid var(--red); border-radius: 10px; padding: 0 14px; background: rgba(255,253,247,.92); animation: stampin .35s cubic-bezier(.2,.9,.3,1.4) both; }
+@keyframes stampin { from { opacity: 0; transform: translate(-50%, -50%) rotate(-6deg) scale(1.6); } }
 .corpse-done { text-align: center; margin: 16px 0 0; }
 .corpse-done span { font-family: var(--font-hand); font-weight: 700; font-size: 32px; color: var(--red); border: 3px solid var(--red); border-radius: 10px; padding: 0 14px; display: inline-block; transform: rotate(-4deg); background: var(--paper); }
 
@@ -693,17 +704,19 @@ dialog .sheet { padding-bottom: 18px; }
     g.step += 1;
     if (g.step >= g.steps) {
       g.phase = 'reveal';
-      g.reveal = { chain: 0, idx: 0 };
+      g.reveal = { chain: 0, idx: firstIdx(g) };
     }
     return true;
   }
 
   // 발표: 다음 칸 → 이야기 끝이면 다음 이야기 → 모두 끝이면 end
+  // 발표에서 이야기를 펼칠 때 처음 보이는 칸. 정교한 시체는 머리·몸통·다리를 한 번에 (화면이 차례로 그려 보여 줌)
+  function firstIdx(g) { return g.mode === 'corpse' ? g.steps - 1 : 0; }
   function revealNext(g) {
     if (g.phase !== 'reveal') return null;
     const r = g.reveal;
     if (r.idx < g.steps - 1) { r.idx += 1; return { type: 'entry', chain: r.chain, idx: r.idx }; }
-    if (r.chain < g.n - 1) { r.chain += 1; r.idx = 0; return { type: 'chain', chain: r.chain, idx: 0 }; }
+    if (r.chain < g.n - 1) { r.chain += 1; r.idx = firstIdx(g); return { type: 'chain', chain: r.chain, idx: r.idx }; }
     g.phase = 'end';
     g.reveal = null;
     return { type: 'end' };
@@ -920,7 +933,7 @@ dialog .sheet { padding-bottom: 18px; }
     let total = 0;
     const weights = ops.map((o) => (o.f ? 6 : Math.max(2, o.p.length / 2)));
     weights.forEach((w) => { total += w; });
-    const dur = opts.duration || Math.max(1200, Math.min(5000, total * 9));
+    const dur = opts.duration || Math.max(opts.minDuration || 1200, Math.min(opts.maxDuration || 5000, total * 9));
     const start = performance.now();
     let stopped = false;
     let doneIdx = 0;   // 끝까지 그린 op 수
@@ -1105,7 +1118,7 @@ dialog .sheet { padding-bottom: 18px; }
 (function () {
   'use strict';
   const SERVER = 'https://draw-relay.2juwon.workers.dev';
-  const BUILD = '2026-10-19T07:30';
+  const BUILD = '2026-10-19T08:12';
   const AV = ['#e5383b', '#2667ff', '#2bb673', '#ff8c1a', '#8f5bd8', '#ff5c9a', '#1fa39a', '#e0a800', '#8a5a3b', '#3aa6e8', '#6f9c1e', '#1d3a8a'];
   const REACTS = ['❤️', '😂', '👏', '😮'];
   const MODE = {
@@ -1757,7 +1770,7 @@ dialog .sheet { padding-bottom: 18px; }
   }
   function storyTitle(c) {
     const m = playerOf(c);
-    return modeOf(S.st && S.st.game) === 'corpse' ? `${josa(m.name, '이', '가')} 시작한 그림` : `${m.name}의 이야기`;
+    return modeOf(S.st && S.st.game) === 'corpse' ? `${m.name}의 그림` : `${m.name}의 이야기`;
   }
   function entryNode(c, s, e, opts = {}) {
     const m = playerOf(e.by);
@@ -1803,6 +1816,50 @@ dialog .sheet { padding-bottom: 18px; }
     document.body.append(f);
     setTimeout(() => f.remove(), 1700);
   }
+  /* 정교한 시체: 머리·몸통·다리를 한 장으로. 화면 높이에 맞춰 줄여서 스크롤 없이 한눈에 */
+  function creatureWidth(availH, maxW) {
+    return Math.max(150, Math.floor(Math.min(maxW, (availH * 4) / (3 * DR.CORPSE_PARTS))));
+  }
+  function creatureNode(c, width0, opts = {}) {
+    let width = width0;
+    const parts = Array.from({ length: DR.CORPSE_PARTS }, (_, s) => S.entries[`${c}:${s}`] || { by: -1, kind: 'draw', draw: { ops: [] } });
+    const stack = h('div', { class: 'creature-stack', style: `width:${width}px` });
+    const cvs = parts.map((e, s) => { const cv = h('canvas', { 'aria-label': e.by >= 0 ? entryLabel(e, s) : PARTS[s] }); stack.append(cv); return cv; });
+    const chips = parts.map((e, s) => h('span', { class: 'chip' }, avatar(playerOf(e.by), true), `${PARTS[s]} · ${playerOf(e.by).name}`));
+    const node = h('li', { class: 'creature', 'data-k': `${c}:0` }, stack, h('div', { class: 'creature-who' }, chips), h('div', { class: 'rx' }));
+    let ac = null;
+    const still = () => cvs.forEach((cv, s) => { DRAW.fit(cv, width); DRAW.render(cv.getContext('2d', { willReadFrequently: true }), parts[s].draw.ops); });
+    // 머리 → 몸통 → 다리 순서로 그려 보여 주기 (끝나면 '완성!')
+    async function play() {
+      if (ac) ac.abort();
+      ac = new AbortController();
+      const my = ac;
+      const old = stack.querySelector('.stamp'); if (old) old.remove();
+      cvs.forEach((cv) => { DRAW.fit(cv, width); DRAW.render(cv.getContext('2d', { willReadFrequently: true }), []); });
+      for (let s = 0; s < cvs.length; s++) {
+        if (my.signal.aborted) return;
+        chips.forEach((ch, i) => ch.classList.toggle('now', i === s));
+        await DRAW.replay(cvs[s].getContext('2d', { willReadFrequently: true }), parts[s].draw.ops, { signal: my.signal, minDuration: 900, maxDuration: 2600 });
+      }
+      chips.forEach((ch) => ch.classList.remove('now'));
+      if (!my.signal.aborted && opts.stamp) stack.append(h('span', { class: 'stamp' }, '완성!'));
+    }
+    stack.append(h('button', { class: 'btn small replay', 'aria-label': '처음부터 다시 그리기', onclick: play }, svg('play')));
+    if (!opts.manual) requestAnimationFrame(() => (opts.animate ? play() : still()));
+    node.stop = () => { if (ac) ac.abort(); };
+    node.play = play;
+    node.setWidth = (w) => { width = w; stack.style.width = `${w}px`; };
+    // 아래쪽 경계(bottomLimit, 화면 좌표)를 넘치면 그만큼 줄임 (이름표가 두 줄이 되는 좁은 화면 등)
+    node.fitAbove = (bottomLimit) => {
+      for (let k = 0; k < 3; k++) {
+        const over = node.getBoundingClientRect().bottom - bottomLimit;
+        if (over <= 0) break;
+        node.setWidth(Math.max(140, width - Math.ceil((over * 4) / (3 * DR.CORPSE_PARTS)) - 2));
+      }
+    };
+    return node;
+  }
+  let rvCreature = null;
   function renderReveal() {
     const st = S.st;
     if (!st || st.room.status !== 'reveal') return;
@@ -1811,13 +1868,33 @@ dialog .sheet { padding-bottom: 18px; }
     const corpse = modeOf(g) === 'corpse';
     const feed = $('#rv-feed');
     feed.classList.toggle('corpse', corpse);
-    if (rvChain !== rv.chain || S.gen !== feed.dataset.gen * 1) { rvChain = rv.chain; rvShown = 0; feed.textContent = ''; feed.dataset.gen = S.gen; const d = $('#rv-done'); if (d) d.remove(); window.scrollTo(0, 0); }
+    if (rvChain !== rv.chain || S.gen !== feed.dataset.gen * 1) { rvChain = rv.chain; rvShown = 0; feed.textContent = ''; feed.dataset.gen = S.gen; const d = $('#rv-done'); if (d) d.remove(); if (rvCreature) { rvCreature.stop(); rvCreature = null; } window.scrollTo(0, 0); }
     $('#rv-av').textContent = '';
     $('#rv-av').append(avatar(owner));
     $('#rv-title').textContent = storyTitle(rv.chain);
     $('#rv-of').textContent = `${rv.chain + 1} / ${g.n}`;
     let added = null;
-    while (rvShown <= rv.idx) {
+    if (corpse) {
+      // 한 번에 펼쳐서 머리부터 차례로 그려 보여 줌
+      if (!rvShown && [0, 1, 2].every((s) => S.entries[`${rv.chain}:${s}`])) {
+        if (rvCreature) rvCreature.stop();
+        rvShown = g.steps;
+        const chain = rv.chain;
+        // 아래 단추들이 다 놓인 뒤에 남은 높이를 재서 한 화면에 맞춤
+        requestAnimationFrame(() => {
+          if (rvChain !== chain || S.screen !== 's-reveal') return;
+          const top = feed.getBoundingClientRect().top;
+          const dockTop = $('#s-reveal .dock').getBoundingClientRect().top;
+          const w = creatureWidth(dockTop - top - 96, feed.clientWidth || 360);
+          rvCreature = creatureNode(chain, w, { stamp: true, manual: true });
+          feed.append(rvCreature);
+          updateRx(chain, 0);
+          rvCreature.fitAbove(dockTop - 8);
+          rvCreature.play();
+        });
+      }
+    }
+    while (!corpse && rvShown <= rv.idx) {
       const e = S.entries[`${rv.chain}:${rvShown}`];
       if (!e) break; // 아직 안 옴
       added = entryNode(rv.chain, rvShown, e, { animate: true });
@@ -1825,12 +1902,11 @@ dialog .sheet { padding-bottom: 18px; }
       updateRx(rv.chain, rvShown);
       rvShown++;
     }
-    if (corpse && rvShown >= g.steps && !$('#rv-done')) feed.after(h('p', { class: 'corpse-done', id: 'rv-done' }, h('span', null, '완성!')));
     if (added) setTimeout(() => added.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' }), 60);
     // 반응 단추: 마지막으로 보인 칸에
     const rb = $('#rv-react');
     rb.textContent = '';
-    const last = rvShown - 1;
+    const last = corpse ? (rvShown ? 0 : -1) : rvShown - 1;
     if (last >= 0) REACTS.forEach((r, i) => rb.append(h('button', { type: 'button', 'aria-label': `반응 ${r}`, onclick: () => Net.send({ t: 'react', c: rv.chain, s: last, e: i }) }, r)));
     // 방장 단추
     const box = $('#rv-host');
@@ -1842,7 +1918,7 @@ dialog .sheet { padding-bottom: 18px; }
         box.append(h('button', { class: 'btn', onclick: () => Net.send({ t: 'all' }) }, '끝까지'));
         box.append(h('button', { class: 'btn blue big grow', onclick: () => Net.send({ t: 'next' }) }, corpse ? `다음: ${PARTS[rv.idx + 1]} 보기` : '다음 칸 보기'));
       } else if (rv.chain < g.n - 1) {
-        box.append(h('button', { class: 'btn red big grow', onclick: () => Net.send({ t: 'next' }) }, `다음: ${storyTitle(rv.chain + 1)}`));
+        box.append(h('button', { class: 'btn red big grow', onclick: () => Net.send({ t: 'next' }) }, corpse ? '다음 그림 보기' : `다음: ${storyTitle(rv.chain + 1)}`));
       } else box.append(h('button', { class: 'btn red big grow', onclick: () => Net.send({ t: 'next' }) }, '앨범 보기'));
     } else $('#rv-note').textContent = `${hostName}님이 한 칸씩 넘겨요`;
   }
@@ -1868,7 +1944,22 @@ dialog .sheet { padding-bottom: 18px; }
       const feed = $('#al-feed');
       feed.classList.toggle('corpse', modeOf(g) === 'corpse');
       feed.textContent = '';
-      for (let s = 0; s < g.steps; s++) {
+      if (modeOf(g) === 'corpse') {
+        if ([0, 1, 2].every((s) => S.entries[`${alChain}:${s}`])) {
+          const cr = creatureNode(alChain, 200, { manual: true });
+          feed.append(cr);
+          updateRx(alChain, 0);
+          requestAnimationFrame(() => {
+            // 이야기 고르는 줄부터 아래 단추 위까지 한 화면에
+            const dockTop = $('#s-album .dock').getBoundingClientRect().top;
+            const top = cr.getBoundingClientRect().top;
+            cr.setWidth(creatureWidth(dockTop - top - 96, feed.clientWidth || 360));
+            cr.fitAbove(dockTop - 8);
+            cr.play();
+          });
+        }
+      }
+      for (let s = 0; modeOf(g) !== 'corpse' && s < g.steps; s++) {
         const e = S.entries[`${alChain}:${s}`];
         if (e) { feed.append(entryNode(alChain, s, e)); updateRx(alChain, s); }
       }
@@ -1891,6 +1982,12 @@ dialog .sheet { padding-bottom: 18px; }
     const [c, s] = best.split(':').map(Number);
     const e = S.entries[best];
     const n = S.reacts[best];
+    if (modeOf(S.st.game) === 'corpse') {
+      box.append(h('p', { class: 'hand', style: 'font-size:26px;margin:0 0 8px' }, '오늘의 그림'),
+        h('p', { class: 'muted', style: 'margin:0 0 10px;font-size:14px' }, `${storyTitle(c)} · ${n.map((k, i) => (k ? `${REACTS[i]} ${k}` : '')).filter(Boolean).join(' ')}`),
+        h('ol', { class: 'feed', style: 'margin:0' }, creatureNode(c, creatureWidth(360, box.clientWidth - 40 || 300))));
+      return;
+    }
     box.append(h('p', { class: 'hand', style: 'font-size:26px;margin:0 0 8px' }, '오늘의 한 칸'),
       h('p', { class: 'muted', style: 'margin:0 0 10px;font-size:14px' }, `${storyTitle(c)} ${s + 1}번째 칸 · ${n.map((k, i) => (k ? `${REACTS[i]} ${k}` : '')).filter(Boolean).join(' ')}`));
     if (e.kind === 'draw') {

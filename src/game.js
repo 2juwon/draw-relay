@@ -248,17 +248,19 @@
     g.step += 1;
     if (g.step >= g.steps) {
       g.phase = 'reveal';
-      g.reveal = { chain: 0, idx: 0 };
+      g.reveal = { chain: 0, idx: firstIdx(g) };
     }
     return true;
   }
 
   // 발표: 다음 칸 → 이야기 끝이면 다음 이야기 → 모두 끝이면 end
+  // 발표에서 이야기를 펼칠 때 처음 보이는 칸. 정교한 시체는 머리·몸통·다리를 한 번에 (화면이 차례로 그려 보여 줌)
+  function firstIdx(g) { return g.mode === 'corpse' ? g.steps - 1 : 0; }
   function revealNext(g) {
     if (g.phase !== 'reveal') return null;
     const r = g.reveal;
     if (r.idx < g.steps - 1) { r.idx += 1; return { type: 'entry', chain: r.chain, idx: r.idx }; }
-    if (r.chain < g.n - 1) { r.chain += 1; r.idx = 0; return { type: 'chain', chain: r.chain, idx: 0 }; }
+    if (r.chain < g.n - 1) { r.chain += 1; r.idx = firstIdx(g); return { type: 'chain', chain: r.chain, idx: r.idx }; }
     g.phase = 'end';
     g.reveal = null;
     return { type: 'end' };

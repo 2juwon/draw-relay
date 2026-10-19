@@ -87,8 +87,21 @@ def reveal_all(host, tag, shots=True):
         rv = host.evaluate('JSON.stringify(window.__DR.S.st.game.reveal)')
         g = host.evaluate('window.__DR.S.st.game')
         if shots and g['reveal']['chain'] == 0 and g['reveal']['idx'] == g['steps'] - 1:
-            time.sleep(3.2)  # 다시 그리기 끝날 때까지
-            shot(pages[1], f'{tag}-reveal-full', full=True)
+            if tag.startswith('c'):
+                # 정교한 시체: 한 번에 펼쳐져 머리 → 몸통 → 다리 순서로 그려짐, 휴대폰 화면 안에 다 들어와야 함
+                time.sleep(1.2)
+                shot(pages[0], f'{tag}-reveal-drawing')
+                pages[0].wait_for_selector('#rv-feed .stamp', timeout=15000)
+                for i in (0, 1):
+                    r = pages[i].evaluate("(() => { const b = document.querySelector('#rv-feed .creature').getBoundingClientRect(); const d = document.querySelector('#s-reveal .dock').getBoundingClientRect(); return [b.top, b.bottom, d.top, innerHeight, document.documentElement.scrollHeight]; })()")
+                    print(tag, '화면', i, '그림 위·아래·dock 위·창 높이·문서 높이', [round(v) for v in r])
+                    assert r[0] >= 0 and r[1] <= r[2], '그림이 한 화면에 다 보여야 함'
+                shot(pages[0], f'{tag}-reveal-mobile')
+                shot(pages[1], f'{tag}-reveal-small')
+                shot(pages[2], f'{tag}-reveal-desktop')
+            else:
+                time.sleep(3.2)  # 다시 그리기 끝날 때까지
+                shot(pages[1], f'{tag}-reveal-full', full=True)
         host.locator('#rv-host button').last.click()
         host.wait_for_function(f"window.__DR.S.st.room.status === 'ended' || JSON.stringify(window.__DR.S.st.game.reveal) !== {rv!r}")
         time.sleep(0.15)
