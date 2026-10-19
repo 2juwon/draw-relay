@@ -324,7 +324,7 @@ export class Room extends DurableObject {
   async beginStep() {
     const r = this.room, g = r.game;
     const now = Date.now();
-    const sec = g.step === 0 || DR.kindOf(g.step) !== 'draw' ? g.settings.textSec : g.settings.drawSec;
+    const sec = DR.kindAt(g, g.step) === 'draw' ? g.settings.drawSec : g.settings.textSec;
     const deadline = now + sec * 1000 * this.speed;
     r.stepStarted = now;
     await this.arm({ kind: 'force', step: g.step, gen: r.gen, at: deadline, deadline, visible: true });

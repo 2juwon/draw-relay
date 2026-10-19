@@ -13,7 +13,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8787';
 const WSB = BASE.replace(/^http/, 'ws');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const newPid = () => crypto.randomUUID().replace(/-/g, '');
-const randomDrawing = (tag) => ({ ops: [{ c: 1 + (tag % 16), w: tag % 5, p: [10, 20, 300 + tag, 400, 500, 600] }, { f: 1, c: 3, x: 900, y: 700 }] });
+const randomDrawing = (tag) => ({ ops: [{ c: 1 + (tag % 16), w: tag % 5, p: [10, 20, 300 + tag, 400, 500, 600, 520, 740] }, { f: 1, c: 3, x: 900, y: 700 }] });
 
 class Bot {
   constructor(name, code, opts = {}) {
@@ -181,6 +181,7 @@ async function timeoutsAndDrops() {
   a.send({ t: 'unsubmit' });
   await until(() => a.task && !a.task.done, 3000, '고치기');
   assert.ok(!a.state.game.done[a.state.me.seat]);
+  d.auto = false; // 네오는 다음 단계에서 아무것도 안 하고 나감 (4명은 3칸이라 마지막 칸)
   a.send({ t: 'submit', step: 1, draw: randomDrawing(5) });
   await until(() => a.state.game.step === 2, 9000, '그리기 시간 초과');
   a.auto = true;
@@ -200,7 +201,7 @@ async function timeoutsAndDrops() {
   assert.ok(a.entries[`${seatC}:0`].auto && a.entries[`${seatC}:0`].text.length > 0);
   const cDraw = Object.entries(a.entries).find(([k, e]) => +k.split(':')[1] === 1 && e.by === seatC)[1];
   assert.ok(!cDraw.auto && cDraw.draw.ops.length === 2);
-  // 네오가 나간 뒤 단계(2, 3)는 자동
+  // 네오가 나간 뒤 단계(2)는 자동
   for (const [k, e] of Object.entries(a.entries)) if (e.by === seatD && +k.split(':')[1] >= 2) assert.ok(e.auto, '나간 사람 칸 자동');
   assert.ok(order);
   [a, b2, c].forEach((x) => x.close());
@@ -288,8 +289,52 @@ async function edgeCases() {
   console.log('✓ 이름 겹침·인원·내보내기·없는 방·큰 그림');
 }
 
+// 게임 방식마다 한 판: 칸 종류, 받은 앞 칸(정교한 시체는 아래쪽 띠만)
+async function modes() {
+  for (const mode of ['sandwich', 'secret', 'corpse']) {
+    const code = await newRoom();
+    const bots = ['가', '나', '다', '라'].map((n) => new Bot(mode + n, code));
+    for (const b of bots) await b.connect();
+    const host = bots[0];
+    await until(() => host.state.room.members.length === 4, 5000, '4명 입장');
+    host.send({ t: 'settings', settings: { mode } });
+    await until(() => host.state.room.settings.mode === mode, 3000, '방식 바꾸기');
+    bots[1].send({ t: 'settings', settings: { mode: 'normal' } }); // 방장 아니면 못 바꿈
+    await sleep(150);
+    assert.strictEqual(host.state.room.settings.mode, mode);
+    host.send({ t: 'start' });
+    await until(() => host.status === 'playing', 5000, '시작');
+    const g0 = host.state.game;
+    assert.strictEqual(g0.mode, mode);
+    const want = DR.kindsFor(mode, DR.stepsFor(4, false, mode));
+    assert.deepStrictEqual(g0.kinds, want);
+    await until(() => host.status === 'reveal', 20000, mode + ' 모든 단계 끝');
+    for (const b of bots) assert.deepStrictEqual(b.tasks.map((t) => t.kind), want, b.name + ' 칸 종류');
+    await revealAllAndCheck(host, bots);
+    const order = host.state.game.order;
+    for (const b of bots) {
+      for (const task of b.tasks) {
+        assert.strictEqual(task.mode, mode);
+        assert.strictEqual(order[task.chain][task.step], b.state.me.seat);
+        if (task.step === 0) { assert.strictEqual(task.prev, null); continue; }
+        const real = b.entries[`${task.chain}:${task.step - 1}`];
+        if (mode === 'corpse') {
+          assert.ok(task.prev.strip, '띠 표시');
+          assert.deepStrictEqual(task.prev.draw, DR.stripOf(real.draw), '띠만 받음');
+          assert.ok(task.prev.draw.ops.length > 0, '띠에 선이 있음');
+          assert.ok(task.prev.draw.ops.every((o) => !o.f), '채우기는 안 옴');
+          assert.ok(JSON.stringify(task.prev.draw).length < JSON.stringify(real.draw).length, '전체보다 작음');
+        } else assert.deepStrictEqual(task.prev, real);
+      }
+    }
+    bots.forEach((b) => b.close());
+  }
+  console.log('✓ 샌드위치·비밀·정교한 시체 한 판씩');
+}
+
 (async () => {
   const t0 = Date.now();
+  await modes();
   await full5();
   await timeoutsAndDrops();
   await everyoneDrops();

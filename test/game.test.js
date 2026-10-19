@@ -189,8 +189,8 @@ t('요약에는 내용이 없음', () => {
 });
 
 t('설정 정리', () => {
-  assert.deepStrictEqual(DR.cleanSettings(null, { drawSec: 7, textSec: 30, short: 'yes' }), { drawSec: 90, textSec: 30, short: false });
-  assert.deepStrictEqual(DR.cleanSettings({ drawSec: 60, textSec: 40, short: true }, { drawSec: 180 }), { drawSec: 180, textSec: 40, short: true });
+  assert.deepStrictEqual(DR.cleanSettings(null, { drawSec: 7, textSec: 30, short: 'yes', mode: 'xx' }), { drawSec: 90, textSec: 30, short: false, mode: 'normal' });
+  assert.deepStrictEqual(DR.cleanSettings({ drawSec: 60, textSec: 40, short: true }, { drawSec: 180, mode: 'corpse' }), { drawSec: 180, textSec: 40, short: true, mode: 'corpse' });
 });
 
 t('제시어 목록', () => {
@@ -205,6 +205,104 @@ t('JSON으로 저장했다 다시 읽어도 그대로 진행', () => {
   g = JSON.parse(JSON.stringify(g));
   playStep(g);
   assert.strictEqual(g.step, 2);
+});
+
+
+// 한 단계를 모두 냄 (게임 방식에 맞는 칸으로)
+function playStepMode(g, draw = (s, step) => line(1 + (s % 10))) {
+  for (let s = 0; s < g.n; s++) {
+    const k = DR.kindAt(g, g.step);
+    const r = DR.submit(g, s, k === 'draw' ? { step: g.step, draw: draw(s, g.step) } : { step: g.step, text: `${k}-${g.step}-${s}` });
+    assert.ok(r.ok, JSON.stringify(r));
+  }
+  assert.ok(DR.advance(g));
+}
+
+t('샌드위치: 제시어 → 그림 → 따라 그리기 … → 맞히기', () => {
+  for (const n of [3, 4, 6, 7]) {
+    const g = DR.createGame({ players: players(n), seed: n, settings: { mode: 'sandwich' } });
+    assert.strictEqual(g.steps, n, '짝수여도 칸을 줄이지 않음');
+    assert.strictEqual(g.kinds[0], 'prompt');
+    assert.strictEqual(g.kinds[n - 1], 'guess');
+    for (let s = 1; s < n - 1; s++) assert.strictEqual(g.kinds[s], 'draw');
+    playStepMode(g); // 제시어
+    playStepMode(g); // 첫 그림
+    if (n > 3) {
+      const tk = DR.taskFor(g, 0);
+      assert.strictEqual(tk.kind, 'draw');
+      assert.strictEqual(tk.prev.kind, 'draw', '앞 칸이 그림 → 따라 그리기');
+      assert.ok(tk.prev.draw.ops.length);
+      assert.ok(DR.submit(g, 0, { step: g.step, text: '글' }).error, '따라 그리기 칸에 글은 안 됨');
+    }
+    while (g.phase === 'play') {
+      if (g.step === g.steps - 1) assert.strictEqual(DR.taskFor(g, 1).kind, 'guess');
+      playStepMode(g);
+    }
+    assert.strictEqual(g.phase, 'reveal');
+  }
+  assert.strictEqual(DR.stepsFor(9, true, 'sandwich'), 5);
+  assert.strictEqual(DR.stepsFor(4, true, 'sandwich'), 4);
+});
+
+t('비밀: 진행 순서는 기본과 같음', () => {
+  const g = DR.createGame({ players: players(6), seed: 2, settings: { mode: 'secret' } });
+  assert.strictEqual(g.mode, 'secret');
+  assert.strictEqual(g.steps, 5);
+  assert.deepStrictEqual(g.kinds, ['prompt', 'draw', 'guess', 'draw', 'guess']);
+  assert.strictEqual(DR.summary(g).mode, 'secret');
+  assert.strictEqual(DR.taskFor(g, 0).mode, 'secret');
+});
+
+t('정교한 시체: 머리·몸통·다리 3칸, 앞 사람 그림은 아래쪽 띠만', () => {
+  for (const n of [3, 5, 12]) {
+    const g = DR.createGame({ players: players(n), seed: 9, settings: { mode: 'corpse', short: true } });
+    assert.strictEqual(g.steps, 3);
+    assert.deepStrictEqual(g.kinds, ['draw', 'draw', 'draw']);
+    const t0 = DR.taskFor(g, 0);
+    assert.strictEqual(t0.kind, 'draw');
+    assert.strictEqual(t0.part, 0);
+    assert.strictEqual(t0.prev, null);
+    assert.ok(DR.submit(g, 0, { step: 0, text: '머리' }).error, '글은 안 됨');
+    // 위쪽에만 그린 선 + 아래 띠까지 내려오는 선 + 채우기
+    playStepMode(g, (s) => ({ ops: [
+      { c: 2, w: 1, p: [100, 50, 200, 60, 300, 80] },                 // 띠 위 (안 보여야 함)
+      { c: 4, w: 2, p: [500, 100, 500, 400, 500, 700, 520, 750] },     // 목: 띠까지 내려옴
+      { f: 1, c: 5, x: 500, y: 300 },
+    ] }));
+    const t1 = DR.taskFor(g, 1);
+    assert.strictEqual(t1.part, 1);
+    assert.ok(t1.prev.strip);
+    const ops = t1.prev.draw.ops;
+    assert.strictEqual(ops.length, 1, '띠에 걸친 선 하나만');
+    assert.ok(ops.every((o) => !o.f), '채우기는 안 보냄');
+    const ys = ops[0].p.filter((_, i) => i % 2);
+    assert.ok(Math.min(...ys) >= 400, '띠 바로 위 점 하나까지만: ' + ys);
+    assert.deepStrictEqual(ys.slice(-2), [700, 750]);
+    // 공개 칸(entries)은 그대로 전부
+    assert.strictEqual(g.entries[DR.chainOf(g, 1, 1)][0].draw.ops.length, 3);
+    playStepMode(g);
+    playStepMode(g);
+    assert.strictEqual(g.phase, 'reveal');
+    assert.strictEqual(DR.taskFor(g, 0), null);
+  }
+});
+
+t('띠 자르기: 띠를 여러 번 드나드는 선은 조각으로', () => {
+  const d = { ops: [{ c: 1, w: 0, p: [0, 700, 10, 100, 20, 720, 30, 730, 40, 50] }] };
+  const s = DR.stripOf(d);
+  assert.deepStrictEqual(s.ops.map((o) => o.p), [[0, 700, 10, 100], [10, 100, 20, 720, 30, 730, 40, 50]]);
+  assert.deepStrictEqual(DR.stripOf({ ops: [{ c: 1, w: 0, p: [5, 5] }] }).ops, []);
+  assert.deepStrictEqual(DR.stripOf(null).ops, []);
+});
+
+t('시간 초과 채우기는 방식과 상관없이 칸 종류대로', () => {
+  const g = DR.createGame({ players: players(4), seed: 4, settings: { mode: 'sandwich' } });
+  DR.fillMissing(g, () => '주사위');
+  DR.advance(g);
+  DR.fillMissing(g, () => 'x');
+  DR.advance(g);
+  DR.fillMissing(g, () => 'x');
+  assert.deepStrictEqual(DR.taskFor(g, 0).mine.draw, { ops: [] });
 });
 
 console.log(`규칙 시험 ${passed}개 통과`);

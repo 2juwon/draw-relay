@@ -257,6 +257,45 @@ dialog::backdrop { background: rgba(35,32,28,.55); }
 dialog .sheet { padding-bottom: 18px; }
 .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
 
+/* 게임 방식 */
+.mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mode-grid button { text-align: left; padding: 10px 12px 11px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; color: var(--ink); min-height: 0; display: block; font: inherit; }
+.mode-grid button b { display: block; font-family: var(--font-hand); font-weight: 700; font-size: 23px; line-height: 1.05; }
+.mode-grid button span { display: block; font-size: 13px; color: var(--ink-soft); line-height: 1.35; margin-top: 3px; }
+.mode-grid button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.mode-grid button[aria-pressed="true"] span { color: rgba(255,253,247,.78); }
+.mode-grid button:disabled { opacity: .45; }
+.mode-tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--ink); color: var(--paper); margin-left: 6px; vertical-align: 2px; }
+/* 비밀: 내가 쓰는 글도 안 보임 */
+.secret-field { position: relative; }
+.secret-field .field { color: transparent; caret-color: var(--ink); }
+.secret-field .field::selection { background: transparent; }
+.secret-field .field::placeholder { color: #9a9288; }
+.secret-field .mask { position: absolute; inset: 0; padding: 12px 16px; font-size: 18px; letter-spacing: 3px; line-height: 1.45; pointer-events: none; color: var(--ink); overflow: hidden; word-break: break-all; }
+.secret-note { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; background: var(--ink); color: var(--paper); border-radius: 999px; padding: 3px 12px; margin: 0 0 10px; }
+/* 샌드위치: 따라 그릴 그림 */
+.ref-wrap { max-width: 440px; margin: 0 0 14px; }
+.ref-wrap .canvas-wrap { border-style: dashed; }
+/* 정교한 시체: 앞 사람 그림의 아래쪽 띠 */
+.strip-label { font-size: 13px; color: var(--ink-soft); margin: 0 0 4px; }
+.strip-wrap { border: 2.5px solid var(--ink); border-bottom: 0; border-radius: 10px 10px 0 0; overflow: hidden; line-height: 0; position: relative; background: #fff; }
+.strip-wrap canvas { width: 100%; display: block; }
+.strip-wrap::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; border-bottom: 2px dashed var(--red); }
+.strip-wrap + .canvas-wrap { border-top-left-radius: 0; border-top-right-radius: 0; }
+.part-guide { position: absolute; left: 0; right: 0; bottom: 0; height: 12%; border-top: 2px dashed rgba(229,56,59,.55); pointer-events: none; }
+.feed.corpse { filter: drop-shadow(0 12px 16px var(--kraft-shadow)); }
+.feed.corpse .item { margin: 0; }
+.feed.corpse .item .who { position: absolute; left: 10px; top: 10px; z-index: 2; background: rgba(255,253,247,.92); border-radius: 999px; padding: 2px 10px 2px 3px; margin: 0; font-size: 14px; }
+.feed.corpse .item .card { border-radius: 0; padding: 0; box-shadow: none; }
+.feed.corpse .item .card canvas { border-radius: 0; }
+.feed.corpse .item:first-child .card { border-radius: 6px 6px 0 0; overflow: hidden; }
+.feed.corpse .item:last-child .card { border-radius: 0 0 6px 6px; overflow: hidden; }
+.feed.corpse .item + .item .card { border-top: 1px dashed rgba(35,32,28,.16); }
+.feed.corpse .item .card.empty { min-height: 120px; display: grid; place-items: center; background: var(--paper); }
+.feed.corpse .item .rx { position: absolute; left: 10px; bottom: 8px; margin: 0; z-index: 2; }
+.corpse-done { text-align: center; margin: 16px 0 0; }
+.corpse-done span { font-family: var(--font-hand); font-weight: 700; font-size: 32px; color: var(--red); border: 3px solid var(--red); border-radius: 10px; padding: 0 14px; display: inline-block; transform: rotate(-4deg); background: var(--paper); }
+
 @media (min-width: 760px) {
   .play-grid { display: grid; grid-template-columns: 1fr 230px; gap: 16px; align-items: start; }
   .play-grid .tools { margin-top: 0; }
@@ -315,6 +354,7 @@ dialog .sheet { padding-bottom: 18px; }
         <li><span><b>다 같이 보기</b> — 이야기가 한 바퀴 돌면, 처음 제시어가 어떻게 변했는지 하나씩 펼쳐 봐요.</span></li>
       </ol>
       <p class="muted" style="font-size:14px;margin:6px 0 0">3명부터 12명까지, 각자 휴대폰으로 해요. 이야기는 사람 수만큼 생기고, 늘 맞히기로 끝나요.</p>
+      <p class="muted" style="font-size:14px;margin:6px 0 0">방장이 대기실에서 방식을 바꿀 수 있어요 — <b>샌드위치</b>(가운데는 그림 따라 그리기만), <b>비밀</b>(내가 쓰는 글도, 그리는 선도 안 보임), <b>정교한 시체</b>(머리·몸통·다리를 나눠 그려 한 장으로).</p>
     </div>
     <p class="foot"><button class="linkish" id="btn-feedback">의견 보내기</button></p>
   </div>
@@ -336,10 +376,12 @@ dialog .sheet { padding-bottom: 18px; }
       <ul class="members" id="room-members"></ul>
     </div>
     <div class="sheet plain">
-      <p class="hand" style="font-size:24px;margin:0 0 10px">시간 설정 <span class="muted" id="set-who" style="font-family:var(--font-ui);font-weight:400;font-size:14px"></span></p>
+      <p class="hand" style="font-size:24px;margin:0 0 10px">게임 설정 <span class="muted" id="set-who" style="font-family:var(--font-ui);font-weight:400;font-size:14px"></span></p>
+      <div class="set-row"><span class="lab">게임 방식</span><div class="mode-grid" id="set-mode"></div></div>
       <div class="set-row"><span class="lab">그리는 시간</span><div class="seg" id="set-draw"></div></div>
-      <div class="set-row"><span class="lab">쓰고 맞히는 시간</span><div class="seg" id="set-text"></div></div>
-      <div class="set-row"><span class="lab">이야기 길이</span><div class="seg" id="set-len"></div><p class="muted" id="set-len-note" style="font-size:13px;margin:6px 0 0"></p></div>
+      <div class="set-row" id="row-text"><span class="lab">쓰고 맞히는 시간</span><div class="seg" id="set-text"></div></div>
+      <div class="set-row" id="row-len"><span class="lab">이야기 길이</span><div class="seg" id="set-len"></div></div>
+      <p class="muted" id="set-len-note" style="font-size:13px;margin:10px 0 0"></p>
     </div>
     <p class="center" style="margin-top:14px"><button class="linkish" id="btn-leave-room" style="color:#3b2c18">방에서 나가기</button></p>
   </div>
@@ -423,7 +465,10 @@ dialog .sheet { padding-bottom: 18px; }
   const MAX_OPS = 4000;
   const MAX_POINTS = 30000;
 
-  const DEFAULT_SETTINGS = Object.freeze({ drawSec: 90, textSec: 40, short: false });
+  const MODES = ['normal', 'sandwich', 'secret', 'corpse'];
+  const CORPSE_PARTS = 3;           // 정교한 시체: 머리·몸통·다리
+  const STRIP_TOP = 660;            // 정교한 시체: 다음 사람에게 보여 주는 아래쪽 띠 (y 660~750)
+  const DEFAULT_SETTINGS = Object.freeze({ drawSec: 90, textSec: 40, short: false, mode: 'normal' });
   const DRAW_SECS = [60, 90, 120, 180];
   const TEXT_SECS = [30, 40, 60];
 
@@ -442,6 +487,7 @@ dialog .sheet { padding-bottom: 18px; }
     if (DRAW_SECS.includes(s.drawSec)) out.drawSec = s.drawSec;
     if (TEXT_SECS.includes(s.textSec)) out.textSec = s.textSec;
     if (typeof s.short === 'boolean') out.short = s.short;
+    if (MODES.includes(s.mode)) out.mode = s.mode;
     return out;
   }
 
@@ -486,10 +532,45 @@ dialog .sheet { padding-bottom: 18px; }
 
   /* 이야기 길이: 사람 수만큼(짧게면 최대 5칸). 다만 칸 수가 짝수면 마지막이 그림이 되므로 한 칸 줄여
    * 늘 '맞히기'로 끝나게 함 (한 칸을 더 붙이면 처음 쓴 사람이 자기 이야기를 맞히게 되어 답을 알고 맞히는 꼴) */
-  function stepsFor(n, short) {
+  function stepsFor(n, short, mode) {
+    if (mode === 'corpse') return CORPSE_PARTS;           // 머리 → 몸통 → 다리
     let k = short ? Math.min(n, SHORT_STEPS) : n;
-    if (k % 2 === 0) k -= 1;
+    if (mode !== 'sandwich' && k % 2 === 0) k -= 1;        // 샌드위치는 마지막 칸을 늘 맞히기로 정해 두므로 그대로
     return Math.max(3, k);
+  }
+
+  /* 칸마다 할 일
+   * 기본·비밀: 제시어 → 그림 → 맞히기 → 그림 → … → 맞히기
+   * 샌드위치:  제시어 → 그림 → 따라 그리기 → … → 맞히기 (가운데는 모두 그림)
+   * 정교한 시체: 그림(머리) → 그림(몸통) → 그림(다리) — 앞 사람 그림은 아래쪽 띠만 보임 */
+  function kindsFor(mode, steps) {
+    return Array.from({ length: steps }, (_, s) => {
+      if (mode === 'corpse') return 'draw';
+      if (mode === 'sandwich') return s === 0 ? 'prompt' : s === steps - 1 ? 'guess' : 'draw';
+      return kindOf(s);
+    });
+  }
+  function kindAt(g, step) { return g.kinds ? g.kinds[step] : kindOf(step); }
+
+  // 정교한 시체: 그림에서 아래쪽 띠(y ≥ top)에 걸친 선 조각만 남김 (채우기는 뺌)
+  function stripOf(draw, top = STRIP_TOP) {
+    const ops = [];
+    for (const o of (draw && draw.ops) || []) {
+      if (o.f) continue;
+      const p = o.p, n = p.length / 2;
+      let run = null;
+      const flush = () => { if (run && run.length) ops.push({ c: o.c, w: o.w, p: run }); run = null; };
+      for (let i = 0; i < n; i++) {
+        // 굵은 선은 띠 조금 위에서 시작해도 띠 안으로 번져 보이므로 굵기 반만큼 여유
+        const inside = p[i * 2 + 1] >= top - 32;
+        if (inside) {
+          if (!run) { run = []; if (i > 0) run.push(p[i * 2 - 2], p[i * 2 - 1]); } // 앞 점 하나로 이어지는 방향을 살림
+          run.push(p[i * 2], p[i * 2 + 1]);
+        } else if (run) { run.push(p[i * 2], p[i * 2 + 1]); flush(); }
+      }
+      flush();
+    }
+    return { ops };
   }
 
   function kindOf(step) { return step === 0 ? 'prompt' : step % 2 ? 'draw' : 'guess'; }
@@ -509,8 +590,10 @@ dialog .sheet { padding-bottom: 18px; }
       v: 1, n, seed: seed >>> 0,
       players: players.map((p) => ({ name: String(p.name || '') })),
       settings: st,
-      steps: stepsFor(n, st.short),
+      mode: st.mode,
+      steps: stepsFor(n, st.short, st.mode),
       ring, pos,
+      kinds: kindsFor(st.mode, stepsFor(n, st.short, st.mode)),
       step: 0,
       phase: 'play',             // play → reveal → end
       entries: Array.from({ length: n }, () => []),   // entries[이야기][단계] = { by, kind, text | draw, auto, done }
@@ -527,12 +610,15 @@ dialog .sheet { padding-bottom: 18px; }
   function taskFor(g, seat) {
     if (g.phase !== 'play' || seat < 0 || seat >= g.n) return null;
     const chain = chainOf(g, seat, g.step);
-    const kind = kindOf(g.step);
+    const kind = kindAt(g, g.step);
     const prev = g.step > 0 ? g.entries[chain][g.step - 1] : null;
     const mine = g.entries[chain][g.step] || null;
+    let pv = prev ? publicEntry(prev) : null;
+    if (pv && g.mode === 'corpse') pv = { by: pv.by, kind: 'draw', auto: pv.auto, strip: true, draw: stripOf(prev.draw) };
     return {
-      step: g.step, steps: g.steps, kind, chain,
-      prev: prev ? publicEntry(prev) : null,
+      step: g.step, steps: g.steps, kind, chain, mode: g.mode || 'normal',
+      part: g.mode === 'corpse' ? g.step : null,
+      prev: pv,
       mine: mine ? publicEntry(mine) : null,
       done: !!(mine && mine.done),
     };
@@ -550,7 +636,7 @@ dialog .sheet { padding-bottom: 18px; }
     if (seat < 0 || seat >= g.n) return { error: '자리가 없어요' };
     if (!payload || payload.step !== g.step) return { error: '이미 다음 단계로 넘어갔어요' };
     const chain = chainOf(g, seat, g.step);
-    const kind = kindOf(g.step);
+    const kind = kindAt(g, g.step);
     const e = { by: seat, kind, auto: false, done: !!done };
     if (kind === 'draw') {
       const d = cleanDrawing(payload.draw);
@@ -589,7 +675,7 @@ dialog .sheet { padding-bottom: 18px; }
       const chain = chainOf(g, seat, g.step);
       const cur = g.entries[chain][g.step];
       if (cur && cur.done) continue;
-      const kind = kindOf(g.step);
+      const kind = kindAt(g, g.step);
       let e;
       if (cur && (kind === 'draw' ? cur.draw && cur.draw.ops.length : cur.text)) e = { ...cur, done: true };
       else if (kind === 'prompt') e = { by: seat, kind, text: cleanText(pickWord()), auto: true, done: true };
@@ -641,7 +727,7 @@ dialog .sheet { padding-bottom: 18px; }
     const done = [];
     for (let i = 0; i < g.n; i++) done.push(isDone(g, i));
     return {
-      n: g.n, steps: g.steps, step: g.step, phase: g.phase, kind: g.phase === 'play' ? kindOf(g.step) : null,
+      n: g.n, steps: g.steps, step: g.step, phase: g.phase, kind: g.phase === 'play' ? kindAt(g, g.step) : null, mode: g.mode || 'normal', kinds: g.kinds,
       settings: g.settings, players: g.players, done, reveal: g.reveal,
       // 이야기마다 맡은 사람 순서 (발표·앨범에서 '누가' 표시용 — 내용은 따로)
       order: g.phase === 'play' ? null : Array.from({ length: g.n }, (_, c) => Array.from({ length: g.steps }, (_, s) => seatOf(g, c, s))),
@@ -649,9 +735,9 @@ dialog .sheet { padding-bottom: 18px; }
   }
 
   return {
-    MIN_PLAYERS, MAX_PLAYERS, SHORT_STEPS, TEXT_MAX, W, H, COLORS, SIZES, MAX_OPS, MAX_POINTS,
+    MIN_PLAYERS, MAX_PLAYERS, SHORT_STEPS, MODES, CORPSE_PARTS, STRIP_TOP, TEXT_MAX, W, H, COLORS, SIZES, MAX_OPS, MAX_POINTS,
     DEFAULT_SETTINGS, DRAW_SECS, TEXT_SECS,
-    mulberry32, stepsFor, cleanSettings, cleanText, cleanDrawing, kindOf, createGame, seatOf, chainOf, taskFor, publicEntry,
+    mulberry32, stepsFor, kindsFor, kindAt, stripOf, cleanSettings, cleanText, cleanDrawing, kindOf, createGame, seatOf, chainOf, taskFor, publicEntry,
     submit, unsubmit, isDone, doneCount, fillMissing, advance, revealNext, revealAll, isRevealed, summary,
   };
 });</script>
@@ -885,6 +971,10 @@ dialog .sheet { padding-bottom: 18px; }
       this.onChange = opts.onChange || (() => {});
       this.readOnly = false;
       this.base = null;     // 지금까지 그린 것 스냅샷 (선 그리는 중에 다시 깔기용)
+      // 비밀 모드: 그은 선이 잠깐 보였다가 사라짐 (그림은 그대로 남고 화면에서만 지움)
+      this.secret = !!opts.secret;
+      this.born = new WeakMap();
+      this.fadeRaf = 0;
       const down = (e) => this.down(e);
       const move = (e) => this.move(e);
       const up = (e) => this.up(e);
@@ -900,7 +990,33 @@ dialog .sheet { padding-bottom: 18px; }
       fit(this.cv, w);
       this.redraw();
     }
-    redraw() { render(this.ctx, this.ops); this.base = null; }
+    redraw() { if (this.secret) { this.paintSecret(); return; } render(this.ctx, this.ops); this.base = null; }
+    paintSecret() {
+      const HOLD = 500, FADE = 1300;
+      const now = performance.now();
+      prepare(this.ctx);
+      let k = -1;
+      this.ops.forEach((o, i) => { if (o.clear) k = i; });
+      let alive = false;
+      for (let i = k + 1; i < this.ops.length; i++) {
+        const o = this.ops[i];
+        const t0 = this.born.get(o);
+        if (t0 == null) continue;
+        const age = now - t0;
+        if (age >= HOLD + FADE) continue;
+        alive = true;
+        this.ctx.globalAlpha = age < HOLD ? 1 : 1 - (age - HOLD) / FADE;
+        if (o.f) { // 채우기는 누른 자리에 동그라미로만 잠깐 표시
+          this.ctx.fillStyle = PALETTE[o.c] || '#000';
+          this.ctx.beginPath(); this.ctx.arc(o.x, o.y, 46, 0, Math.PI * 2); this.ctx.fill();
+          this.ctx.lineWidth = 3; this.ctx.strokeStyle = '#1d1b19'; this.ctx.stroke();
+        } else drawStroke(this.ctx, o);
+      }
+      this.ctx.globalAlpha = 1;
+      if (this.cur) drawStroke(this.ctx, this.cur);
+      cancelAnimationFrame(this.fadeRaf);
+      this.fadeRaf = alive ? requestAnimationFrame(() => this.paintSecret()) : 0;
+    }
     point(e) {
       const r = this.cv.getBoundingClientRect();
       return [Math.round(((e.clientX - r.left) / r.width) * W), Math.round(((e.clientY - r.top) / r.height) * H)];
@@ -911,11 +1027,13 @@ dialog .sheet { padding-bottom: 18px; }
       const [x, y] = this.point(e);
       if (this.tool === 'fill') {
         this.push({ f: 1, c: this.color, x: Math.max(0, Math.min(W, x)), y: Math.max(0, Math.min(H, y)) });
-        applyOp(this.ctx, this.ops[this.ops.length - 1]);
+        if (this.secret) this.paintSecret();
+        else applyOp(this.ctx, this.ops[this.ops.length - 1]);
         return;
       }
       try { this.cv.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
       this.cur = { c: this.tool === 'eraser' ? 0 : this.color, w: this.size, p: [x, y], id: e.pointerId };
+      if (this.secret) { this.paintSecret(); return; }
       this.base = this.ctx.getImageData(0, 0, this.cv.width, this.cv.height);
       drawStroke(this.ctx, this.cur);
     }
@@ -930,6 +1048,7 @@ dialog .sheet { padding-bottom: 18px; }
         if ((x - lx) * (x - lx) + (y - ly) * (y - ly) < 9) continue; // 3 이내는 건너뜀
         p.push(x, y);
       }
+      if (this.secret) { if (!this.fadeRaf) this.paintSecret(); return; }
       this.ctx.putImageData(this.base, 0, 0);
       drawStroke(this.ctx, this.cur);
     }
@@ -943,7 +1062,7 @@ dialog .sheet { padding-bottom: 18px; }
       delete o.id;
       this.push(o);
     }
-    push(o) { this.ops.push(o); this.redo = []; this.onChange(); }
+    push(o) { this.ops.push(o); this.redo = []; if (this.secret) { this.born.set(o, performance.now()); this.paintSecret(); } this.onChange(); }
     undo() { if (!this.ops.length) return; this.redo.push(this.ops.pop()); this.redraw(); this.onChange(); }
     again() { if (!this.redo.length) return; this.ops.push(this.redo.pop()); this.redraw(); this.onChange(); }
     clear() { if (!this.drawing().ops.length) return; this.push({ clear: 1 }); this.redraw(); }
@@ -957,6 +1076,21 @@ dialog .sheet { padding-bottom: 18px; }
     pointCount() { return this.drawing().ops.reduce((n, o) => n + (o.p ? o.p.length / 2 : 0), 0); }
   }
 
+  // 정교한 시체: 그림의 아래쪽 띠(y ≥ top)만 그려 보여 주기. 캔버스 높이는 띠 높이에 맞춤
+  function renderStrip(cv, ops, top, cssW) {
+    const dpr = Math.min(2, (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1);
+    const pxW = Math.round(Math.max(320, Math.min(1400, cssW * dpr)));
+    const pxH = Math.round(pxW * (H - top) / W);
+    if (cv.width !== pxW || cv.height !== pxH) { cv.width = pxW; cv.height = pxH; }
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    const k = cv.width / W;
+    ctx.setTransform(k, 0, 0, k, 0, -top * k);
+    for (const o of ops || []) if (!o.f) drawStroke(ctx, o);
+  }
+
   // 그림을 이미지로 (앨범 저장용)
   function toCanvas(ops, width) {
     const cv = document.createElement('canvas');
@@ -965,15 +1099,28 @@ dialog .sheet { padding-bottom: 18px; }
     return cv;
   }
 
-  return { W, H, PALETTE, SIZES, render, replay, fit, Pad, toCanvas };
+  return { W, H, PALETTE, SIZES, render, replay, fit, Pad, toCanvas, renderStrip };
 });</script>
 <script>
 (function () {
   'use strict';
   const SERVER = 'https://draw-relay.2juwon.workers.dev';
-  const BUILD = '2026-10-19T05:49';
+  const BUILD = '2026-10-19T07:30';
   const AV = ['#e5383b', '#2667ff', '#2bb673', '#ff8c1a', '#8f5bd8', '#ff5c9a', '#1fa39a', '#e0a800', '#8a5a3b', '#3aa6e8', '#6f9c1e', '#1d3a8a'];
   const REACTS = ['❤️', '😂', '👏', '😮'];
+  const MODE = {
+    normal: { name: '기본', desc: '제시어 → 그림 → 맞히기를 번갈아' },
+    sandwich: { name: '샌드위치', desc: '처음 글·마지막 맞히기 사이는 그림 따라 그리기만' },
+    secret: { name: '비밀', desc: '내가 쓰는 글도, 그리는 선도 안 보여요' },
+    corpse: { name: '정교한 시체', desc: '머리·몸통·다리를 나눠 그려 한 장으로' },
+  };
+  const PARTS = ['머리', '몸통', '다리'];
+  const PART_HINT = [
+    '사람·동물·괴물·물건, 무엇의 머리든 좋아요. 목이나 아래쪽 끝이 빨간 점선까지 내려오게 그려 주세요. 다음 사람은 그 끝부분만 보고 몸통을 이어 그려요.',
+    '위에 보이는 건 앞 사람이 그린 머리의 아래쪽 끝이에요. 거기서 이어지게 몸통을 그리고, 아래쪽 끝(빨간 점선)까지 내려오게 해 주세요.',
+    '위에 보이는 건 앞 사람이 그린 몸통의 아래쪽 끝이에요. 거기서 이어지게 다리(또는 바퀴·꼬리·무엇이든)를 그려 주세요.',
+  ];
+  const modeOf = (g) => (g && g.mode) || 'normal';
   const $ = (s) => document.querySelector(s);
   const h = (tag, attrs, ...kids) => {
     const e = document.createElement(tag);
@@ -1257,11 +1404,23 @@ dialog .sheet { padding-bottom: 18px; }
     seg($('#set-draw'), DR.DRAW_SECS.map((v) => [v, v < 120 ? `${v}초` : `${v / 60}분`]), s.drawSec, host, (v) => send({ drawSec: v }));
     seg($('#set-text'), DR.TEXT_SECS.map((v) => [v, `${v}초`]), s.textSec, host, (v) => send({ textSec: v }));
     seg($('#set-len'), [[false, '모두 한 번씩'], [true, `짧게 (${DR.SHORT_STEPS}칸)`]], s.short, host, (v) => send({ short: v }));
+    const mode = s.mode || 'normal';
+    const mb = $('#set-mode');
+    mb.textContent = '';
+    for (const k of DR.MODES) {
+      mb.append(h('button', { type: 'button', 'aria-pressed': String(k === mode), disabled: !host && k !== mode ? true : null, onclick: () => host && k !== mode && send({ mode: k }) },
+        h('b', null, MODE[k].name), h('span', null, MODE[k].desc)));
+    }
+    $('#row-len').hidden = mode === 'corpse';
+    $('#row-text').hidden = mode === 'corpse';
     const n = people.length;
-    const steps = DR.stepsFor(Math.max(n, DR.MIN_PLAYERS), s.short);
-    const draws = Math.floor(steps / 2), texts = steps - draws;
+    const steps = DR.stepsFor(Math.max(n, DR.MIN_PLAYERS), s.short, mode);
+    const kinds = DR.kindsFor(mode, steps);
+    const draws = kinds.filter((k) => k === 'draw').length, texts = steps - draws;
     const mins = Math.max(1, Math.round((draws * s.drawSec + texts * s.textSec) / 60));
-    $('#set-len-note').textContent = n >= DR.MIN_PLAYERS ? `지금 ${n}명이면 이야기마다 ${steps}칸 · 그리는 시간까지 약 ${mins}분` : '';
+    $('#set-len-note').textContent = n < DR.MIN_PLAYERS ? ''
+      : mode === 'corpse' ? `지금 ${n}명이면 그림 ${n}장이 생기고, 각자 머리·몸통·다리를 하나씩 그려요 · 약 ${mins}분`
+      : `지금 ${n}명이면 이야기마다 ${steps}칸 · 그리는 시간까지 약 ${mins}분`;
     $('#btn-start').hidden = !host;
     $('#btn-start').disabled = n < DR.MIN_PLAYERS;
     $('#room-note').textContent = n < DR.MIN_PLAYERS ? `${DR.MIN_PLAYERS}명부터 시작할 수 있어요. 링크를 보내 친구를 불러 주세요` : host ? '다 모였으면 시작하세요' : `${hostName}님이 시작하길 기다리는 중이에요`;
@@ -1316,7 +1475,11 @@ dialog .sheet { padding-bottom: 18px; }
     const steps = $('#play-steps');
     if (steps.childElementCount !== g.steps) { steps.textContent = ''; for (let i = 0; i < g.steps; i++) steps.append(h('i')); }
     [...steps.children].forEach((el, i) => { el.className = i < g.step ? 'done' : i === g.step ? 'now' : ''; });
-    const kindName = { prompt: '제시어 쓰기', draw: '그리기', guess: '맞히기' }[g.kind];
+    const md = modeOf(g);
+    let kindName = { prompt: '제시어 쓰기', draw: '그리기', guess: '맞히기' }[g.kind];
+    if (md === 'corpse') kindName = `${PARTS[g.step]} 그리기`;
+    else if (md === 'sandwich' && g.kind === 'draw' && g.step > 1) kindName = '따라 그리기';
+    if (md !== 'normal') kindName = `${MODE[md].name} · ${kindName}`;
     const dc = g.done.filter(Boolean).length;
     $('#play-stage').textContent = `${g.step + 1}/${g.steps}칸 · ${kindName} · ${dc}/${g.n}명 냄`;
     if (!tick) tick = setInterval(updateTimer, 250);
@@ -1356,20 +1519,61 @@ dialog .sheet { padding-bottom: 18px; }
     const saved = store.sget(draftKey(t));
     if (navigator.vibrate) try { navigator.vibrate(30); } catch (e) { /* 무시 */ }
 
+    const mode = t.mode || 'normal';
+    const secretNote = (text) => (mode === 'secret' ? h('p', { class: 'secret-note' }, '🤫 ', text) : null);
     if (t.kind === 'draw') {
-      const prevText = t.prev && t.prev.text ? t.prev.text : '';
       const cw = h('div', { class: 'canvas-wrap', id: 'cw' }, h('canvas', { id: 'pad', 'aria-label': '그림판' }));
       const tools = buildTools();
+      const by = josa(playerOf(t.prev ? t.prev.by : -1).name, '이', '가');
+      let head, left = cw, after = null;
+      if (mode === 'corpse') {
+        // 정교한 시체: 머리·몸통·다리. 앞 사람 그림은 아래쪽 띠만
+        const part = t.part || 0;
+        head = [h('p', { class: 'ask', style: 'margin:0 0 4px' }, `${josa(PARTS[part], '을', '를')} 그려 주세요`),
+          h('p', { class: 'ask-sub' }, PART_HINT[part])];
+        if (part < DR.CORPSE_PARTS - 1) cw.append(h('div', { class: 'part-guide', 'aria-hidden': 'true' }));
+        if (t.prev && t.prev.strip) {
+          const sc = h('canvas', { id: 'strip-cv', 'aria-label': `${by} 그린 ${PARTS[part - 1]}의 아래쪽 끝` });
+          left = h('div', null,
+            h('p', { class: 'strip-label' }, `${by} 그린 ${PARTS[part - 1]}의 아래쪽 끝 (여기서 이어 그려요)`),
+            h('div', { class: 'strip-wrap' }, sc), cw);
+          after = () => {
+            const draw = () => DRAW.renderStrip(sc, t.prev.draw.ops, DR.STRIP_TOP, sc.getBoundingClientRect().width || 500);
+            draw();
+            const ro = new ResizeObserver(draw); ro.observe(sc);
+            const old = resizeObs; resizeObs = { disconnect() { ro.disconnect(); if (old) old.disconnect(); } };
+          };
+        }
+      } else if (t.prev && t.prev.kind === 'draw') {
+        // 샌드위치: 앞 사람 그림을 보고 따라 그리기
+        const rc = h('canvas', { id: 'ref-cv', 'aria-label': `${by} 그린 그림` });
+        const empty = !t.prev.draw.ops.length;
+        head = [h('p', { class: 'ask', style: 'margin:0 0 4px' }, '똑같이 따라 그려 주세요'),
+          h('p', { class: 'ask-sub' }, empty ? `${by} 시간 안에 못 그렸어요. 아무거나 상상해서 그려 주세요` : `${by} 그린 그림이에요. 뭔지 몰라도 보이는 대로 따라 그려요.`),
+          h('div', { class: 'ref-wrap' }, h('div', { class: 'canvas-wrap ro' }, rc),
+            h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn small', onclick: () => replayGuess(rc, t) }, svg('play'), '그리는 순서 다시 보기')))];
+        after = () => {
+          requestAnimationFrame(() => replayGuess(rc, t));
+          const ro = new ResizeObserver(() => { if (DRAW.fit(rc, rc.getBoundingClientRect().width || 400)) DRAW.render(rc.getContext('2d', { willReadFrequently: true }), t.prev.draw.ops); });
+          ro.observe(rc);
+          const old = resizeObs; resizeObs = { disconnect() { ro.disconnect(); if (old) old.disconnect(); } };
+        };
+      } else {
+        const prevText = t.prev && t.prev.text ? t.prev.text : '';
+        head = [h('p', { class: 'ask-sub', style: 'margin:0 0 6px' }, `${by} 넘긴 글이에요. 이걸 그려 주세요`),
+          h('div', { style: 'margin:0 0 14px' }, h('span', { class: 'given' + (prevText.length > 18 ? ' small' : '') }, prevText || '(빈칸 — 자유롭게 그려 주세요)'))];
+      }
       body.append(h('div', { class: 'sheet' },
-        h('p', { class: 'ask-sub', style: 'margin:0 0 6px' }, `${josa(playerOf(t.prev ? t.prev.by : -1).name, '이', '가')} 넘긴 글이에요. 이걸 그려 주세요`),
-        h('div', { style: 'margin:0 0 14px' }, h('span', { class: 'given' + (prevText.length > 18 ? ' small' : '') }, prevText || '(빈칸 — 자유롭게 그려 주세요)')),
-        h('div', { class: 'play-grid' }, cw, tools),
+        secretNote('비밀 모드: 그은 선은 금방 사라져요. 감으로 그려요!'),
+        head,
+        h('div', { class: 'play-grid' }, left, tools),
         h('p', { class: 'muted', style: 'font-size:13px;margin:10px 0 0' }, '글자는 쓰면 안 돼요. 그림으로만!')));
-      pad = new DRAW.Pad($('#pad'), { onChange: () => { syncTools(); saveLocalDraft(); submitArmed = false; setSubmitLabel(); } });
+      pad = new DRAW.Pad($('#pad'), { secret: mode === 'secret', onChange: () => { syncTools(); saveLocalDraft(); submitArmed = false; setSubmitLabel(); } });
       if (t.mine && t.mine.draw && t.mine.draw.ops.length) pad.load(t.mine.draw.ops);
       else if (saved && saved.ops) pad.load(saved.ops);
       resizeObs = new ResizeObserver(() => pad && pad.resize());
       resizeObs.observe($('#pad'));
+      if (after) after();
       syncTools();
       draftTimer = setInterval(() => sendDraft(false), 12000);
     } else if (t.kind === 'guess') {
@@ -1378,11 +1582,12 @@ dialog .sheet { padding-bottom: 18px; }
       const inp = h('input', { class: 'field', id: 'work-text', maxlength: DR.TEXT_MAX, placeholder: '뭘 그린 걸까요?', autocomplete: 'off', enterkeyhint: 'done' });
       const empty = t.prev && t.prev.draw && !t.prev.draw.ops.length;
       body.append(h('div', { class: 'sheet' },
+        secretNote('비밀 모드: 내가 쓰는 글자는 나도 안 보여요'),
         h('p', { class: 'ask' }, '이건 뭘까요?'),
         h('p', { class: 'ask-sub' }, empty ? `${josa(playerOf(t.prev.by).name, '이', '가')} 시간 안에 못 그렸어요. 아무거나 상상해서 적어 주세요` : `${josa(playerOf(t.prev ? t.prev.by : -1).name, '이', '가')} 그린 그림이에요. 보이는 대로 적어 주세요`),
         cw,
         h('div', { class: 'row', style: 'margin-top:8px' }, h('button', { class: 'btn small', onclick: () => replayGuess(cv, t) }, svg('play'), '그리는 순서 다시 보기')),
-        h('div', { style: 'margin-top:14px' }, inp),
+        h('div', { style: 'margin-top:14px' }, maybeSecret(inp, mode)),
         h('div', { class: 'counter', id: 'work-count' })));
       requestAnimationFrame(() => { DRAW.fit(cv, cv.getBoundingClientRect().width || 500); replayGuess(cv, t); });
       resizeObs = new ResizeObserver(() => { if (DRAW.fit(cv, cv.getBoundingClientRect().width || 500)) DRAW.render(cv.getContext('2d', { willReadFrequently: true }), t.prev ? t.prev.draw.ops : []); });
@@ -1392,9 +1597,10 @@ dialog .sheet { padding-bottom: 18px; }
     } else {
       const inp = h('textarea', { class: 'field', id: 'work-text', rows: 2, maxlength: DR.TEXT_MAX, placeholder: '예) 우산 쓰고 출근하는 펭귄', autocomplete: 'off', enterkeyhint: 'done' });
       body.append(h('div', { class: 'sheet' },
+        secretNote('비밀 모드: 내가 쓰는 글자는 나도 안 보여요'),
         h('p', { class: 'ask' }, '제시어를 적어 주세요'),
         h('p', { class: 'ask-sub' }, '이 글이 내 이야기의 시작이에요. 옆 사람이 그림으로 그려요. 사물·동물·엉뚱한 장면 무엇이든 좋아요.'),
-        h('div', { class: 'row', style: 'align-items:stretch' }, h('div', { class: 'grow' }, inp), h('button', { class: 'dice', title: '아무거나', 'aria-label': '아무 제시어나 넣기', onclick: () => { inp.value = WORDS.pick(); inp.dispatchEvent(new Event('input')); } }, svg('dice'))),
+        h('div', { class: 'row', style: 'align-items:stretch' }, h('div', { class: 'grow' }, maybeSecret(inp, mode)), h('button', { class: 'dice', title: '아무거나', 'aria-label': '아무 제시어나 넣기', onclick: () => { inp.value = WORDS.pick(); inp.dispatchEvent(new Event('input')); } }, svg('dice'))),
         h('div', { class: 'counter', id: 'work-count' })));
       inp.value = t.mine && t.mine.text ? t.mine.text : saved && saved.text ? saved.text : '';
       wireText(inp);
@@ -1404,6 +1610,18 @@ dialog .sheet { padding-bottom: 18px; }
     dock.textContent = '';
     dock.append(h('button', { class: 'btn green big block', id: 'btn-submit', onclick: submitWork }, '다 했어요'));
     if (t.kind !== 'draw') setTimeout(() => { const i = $('#work-text'); if (i && !t.done && matchMedia('(pointer: fine)').matches) i.focus(); }, 50);
+  }
+  // 비밀 모드: 글자는 투명하게, 위에 ●만 보여 줌 (한글 조합 중에도 안 보이게)
+  function maybeSecret(inp, mode) {
+    if (mode !== 'secret') return inp;
+    const mask = h('div', { class: 'mask', 'aria-hidden': 'true' });
+    const upd = () => { mask.textContent = '●'.repeat(Array.from(inp.value).length); };
+    inp.addEventListener('input', upd);
+    inp.addEventListener('compositionupdate', () => requestAnimationFrame(upd));
+    inp.placeholder = '쓰는 글자는 안 보여요 (나중에 다 같이 봐요)';
+    inp.setAttribute('spellcheck', 'false');
+    setTimeout(upd, 0);
+    return h('div', { class: 'secret-field' }, inp, mask);
   }
   function wireText(inp) {
     const upd = () => { $('#work-count').textContent = `${Array.from(inp.value).length} / ${DR.TEXT_MAX}`; saveLocalDraft(); };
@@ -1528,21 +1746,28 @@ dialog .sheet { padding-bottom: 18px; }
   /* ── 발표 ── */
   let rvChain = -1, rvShown = 0;
   const replays = [];
-  function entryLabel(e) {
+  function entryLabel(e, s) {
     const m = playerOf(e.by);
+    const md = modeOf(S.st && S.st.game);
     if (e.kind === 'prompt') return `${m.name}의 제시어`;
+    if (e.kind === 'draw' && md === 'corpse') return `${josa(m.name, '이', '가')} 그린 ${PARTS[s] || '그림'}`;
+    if (e.kind === 'draw' && md === 'sandwich' && s > 1) return `${josa(m.name, '이', '가')} 따라 그린 그림`;
     if (e.kind === 'draw') return `${josa(m.name, '이', '가')} 그린 그림`;
     return `${josa(m.name, '이', '가')} 본 것`;
+  }
+  function storyTitle(c) {
+    const m = playerOf(c);
+    return modeOf(S.st && S.st.game) === 'corpse' ? `${josa(m.name, '이', '가')} 시작한 그림` : `${m.name}의 이야기`;
   }
   function entryNode(c, s, e, opts = {}) {
     const m = playerOf(e.by);
     const li = h('li', { class: `item ${e.kind === 'draw' ? 'draw' : 'text'} ${e.kind}`, 'data-k': `${c}:${s}` },
-      h('div', { class: 'who' }, avatar(m, true), h('span', null, entryLabel(e))));
+      h('div', { class: 'who' }, avatar(m, true), h('span', null, entryLabel(e, s))));
     let card;
     if (e.kind === 'draw') {
-      const cv = h('canvas', { 'aria-label': entryLabel(e) });
+      const cv = h('canvas', { 'aria-label': entryLabel(e, s) });
       card = h('div', { class: 'card tape' }, cv);
-      if (!e.draw.ops.length) { card = h('div', { class: 'card empty' }, '시간이 모자라서 빈 그림이에요'); }
+      if (!e.draw.ops.length) { card = h('div', { class: 'card empty' }, modeOf(S.st && S.st.game) === 'corpse' ? `시간이 모자라서 ${PARTS[s] || '그림'} 칸이 비었어요` : '시간이 모자라서 빈 그림이에요'); }
       else {
         card.append(h('button', { class: 'btn small replay', 'aria-label': '그리는 순서 다시 보기', onclick: () => doReplay(cv, e.draw.ops) }, svg('play')));
         requestAnimationFrame(() => {
@@ -1583,11 +1808,13 @@ dialog .sheet { padding-bottom: 18px; }
     if (!st || st.room.status !== 'reveal') return;
     const g = st.game, rv = g.reveal, mine = me() || {};
     const owner = playerOf(rv.chain);
+    const corpse = modeOf(g) === 'corpse';
     const feed = $('#rv-feed');
-    if (rvChain !== rv.chain || S.gen !== feed.dataset.gen * 1) { rvChain = rv.chain; rvShown = 0; feed.textContent = ''; feed.dataset.gen = S.gen; window.scrollTo(0, 0); }
+    feed.classList.toggle('corpse', corpse);
+    if (rvChain !== rv.chain || S.gen !== feed.dataset.gen * 1) { rvChain = rv.chain; rvShown = 0; feed.textContent = ''; feed.dataset.gen = S.gen; const d = $('#rv-done'); if (d) d.remove(); window.scrollTo(0, 0); }
     $('#rv-av').textContent = '';
     $('#rv-av').append(avatar(owner));
-    $('#rv-title').textContent = `${owner.name}의 이야기`;
+    $('#rv-title').textContent = storyTitle(rv.chain);
     $('#rv-of').textContent = `${rv.chain + 1} / ${g.n}`;
     let added = null;
     while (rvShown <= rv.idx) {
@@ -1598,6 +1825,7 @@ dialog .sheet { padding-bottom: 18px; }
       updateRx(rv.chain, rvShown);
       rvShown++;
     }
+    if (corpse && rvShown >= g.steps && !$('#rv-done')) feed.after(h('p', { class: 'corpse-done', id: 'rv-done' }, h('span', null, '완성!')));
     if (added) setTimeout(() => added.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' }), 60);
     // 반응 단추: 마지막으로 보인 칸에
     const rb = $('#rv-react');
@@ -1612,9 +1840,9 @@ dialog .sheet { padding-bottom: 18px; }
       $('#rv-note').textContent = '';
       if (rv.idx < g.steps - 1) {
         box.append(h('button', { class: 'btn', onclick: () => Net.send({ t: 'all' }) }, '끝까지'));
-        box.append(h('button', { class: 'btn blue big grow', onclick: () => Net.send({ t: 'next' }) }, '다음 칸 보기'));
+        box.append(h('button', { class: 'btn blue big grow', onclick: () => Net.send({ t: 'next' }) }, corpse ? `다음: ${PARTS[rv.idx + 1]} 보기` : '다음 칸 보기'));
       } else if (rv.chain < g.n - 1) {
-        box.append(h('button', { class: 'btn red big grow', onclick: () => Net.send({ t: 'next' }) }, `다음: ${playerOf(rv.chain + 1).name}의 이야기`));
+        box.append(h('button', { class: 'btn red big grow', onclick: () => Net.send({ t: 'next' }) }, `다음: ${storyTitle(rv.chain + 1)}`));
       } else box.append(h('button', { class: 'btn red big grow', onclick: () => Net.send({ t: 'next' }) }, '앨범 보기'));
     } else $('#rv-note').textContent = `${hostName}님이 한 칸씩 넘겨요`;
   }
@@ -1635,9 +1863,10 @@ dialog .sheet { padding-bottom: 18px; }
       chips.textContent = '';
       for (let c = 0; c < g.n; c++) {
         const m = playerOf(c);
-        chips.append(h('button', { type: 'button', 'aria-pressed': String(c === alChain), onclick: () => { alChain = c; renderAlbum(); window.scrollTo({ top: $('#al-chips').offsetTop - 10 }); } }, avatar(m, true), `${m.name}의 이야기`));
+        chips.append(h('button', { type: 'button', 'aria-pressed': String(c === alChain), onclick: () => { alChain = c; renderAlbum(); window.scrollTo({ top: $('#al-chips').offsetTop - 10 }); } }, avatar(m, true), storyTitle(c)));
       }
       const feed = $('#al-feed');
+      feed.classList.toggle('corpse', modeOf(g) === 'corpse');
       feed.textContent = '';
       for (let s = 0; s < g.steps; s++) {
         const e = S.entries[`${alChain}:${s}`];
@@ -1663,12 +1892,12 @@ dialog .sheet { padding-bottom: 18px; }
     const e = S.entries[best];
     const n = S.reacts[best];
     box.append(h('p', { class: 'hand', style: 'font-size:26px;margin:0 0 8px' }, '오늘의 한 칸'),
-      h('p', { class: 'muted', style: 'margin:0 0 10px;font-size:14px' }, `${playerOf(c).name}의 이야기 ${s + 1}번째 칸 · ${n.map((k, i) => (k ? `${REACTS[i]} ${k}` : '')).filter(Boolean).join(' ')}`));
+      h('p', { class: 'muted', style: 'margin:0 0 10px;font-size:14px' }, `${storyTitle(c)} ${s + 1}번째 칸 · ${n.map((k, i) => (k ? `${REACTS[i]} ${k}` : '')).filter(Boolean).join(' ')}`));
     if (e.kind === 'draw') {
       const cv = h('canvas');
-      box.append(h('div', { class: 'best' }, cv), h('p', { style: 'margin:8px 0 0' }, entryLabel(e)));
+      box.append(h('div', { class: 'best' }, cv), h('p', { style: 'margin:8px 0 0' }, entryLabel(e, s)));
       requestAnimationFrame(() => { DRAW.fit(cv, cv.getBoundingClientRect().width || 500); DRAW.render(cv.getContext('2d', { willReadFrequently: true }), e.draw.ops); });
-    } else box.append(h('p', { class: 'hand', style: 'font-size:30px;margin:0' }, e.text || '(빈칸)'), h('p', { class: 'muted', style: 'margin:4px 0 0' }, entryLabel(e)));
+    } else box.append(h('p', { class: 'hand', style: 'font-size:30px;margin:0' }, e.text || '(빈칸)'), h('p', { class: 'muted', style: 'margin:4px 0 0' }, entryLabel(e, s)));
   }
   $('#btn-again').onclick = () => Net.send({ t: 'again' });
   $('#btn-leave-album').onclick = () => { Net.send({ t: 'leave' }); Net.stop(); leaveLocal(); };
@@ -1680,7 +1909,25 @@ dialog .sheet { padding-bottom: 18px; }
     try { await document.fonts.ready; } catch (e) { /* 무시 */ }
     const Wd = 720, pad2 = 28, drawH = Math.round((Wd - pad2 * 2) * 3 / 4);
     const items = [];
-    for (let s = 0; s < g.steps; s++) { const e = S.entries[`${alChain}:${s}`]; if (e) items.push(e); }
+    for (let s = 0; s < g.steps; s++) { const e = S.entries[`${alChain}:${s}`]; if (e) items.push({ e, s }); }
+    if (modeOf(g) === 'corpse') {
+      // 정교한 시체: 머리·몸통·다리를 틈 없이 이어 붙인 한 장
+      const inner = Wd - pad2 * 2 - 16;
+      const partH = Math.round(inner * 3 / 4);
+      const top = 150;
+      const cvc = document.createElement('canvas');
+      cvc.width = Wd; cvc.height = top + partH * items.length + 16 + 44;
+      const xc = cvc.getContext('2d');
+      xc.fillStyle = '#c79a5f'; xc.fillRect(0, 0, cvc.width, cvc.height);
+      xc.fillStyle = '#23201c'; xc.font = '700 54px Gaegu, sans-serif'; xc.textBaseline = 'top';
+      xc.fillText(storyTitle(alChain), pad2, 34);
+      xc.font = '20px "Gowun Dodum", sans-serif'; xc.fillStyle = '#3b2c18';
+      xc.fillText('그림 릴레이', Wd - pad2 - xc.measureText('그림 릴레이').width, 52);
+      xc.fillText(items.map((b) => `${PARTS[b.s]} ${playerOf(b.e.by).name}`).join('  ·  '), pad2 + 2, 104);
+      xc.fillStyle = '#fffdf7'; xc.fillRect(pad2, top, Wd - pad2 * 2, partH * items.length + 16);
+      items.forEach((b, i) => xc.drawImage(DRAW.toCanvas(b.e.draw.ops, inner), pad2 + 8, top + 8 + i * partH));
+      return saveCanvas(cvc);
+    }
     const tmp = document.createElement('canvas').getContext('2d');
     const wrapText = (text, font, maxW) => {
       tmp.font = font;
@@ -1692,11 +1939,11 @@ dialog .sheet { padding-bottom: 18px; }
     };
     const textFont = '700 40px Gaegu, sans-serif', labelFont = '20px "Gowun Dodum", sans-serif';
     let H2 = 130;
-    const blocks = items.map((e) => {
+    const blocks = items.map(({ e, s }) => {
       const lines = e.kind === 'draw' ? null : wrapText(e.text || '(빈칸)', textFont, Wd - pad2 * 2 - 32);
       const hh = 36 + (e.kind === 'draw' ? drawH + 16 : lines.length * 46 + 28) + 26;
       H2 += hh;
-      return { e, lines, hh };
+      return { e, s, lines, hh };
     });
     H2 += 40;
     const cv = document.createElement('canvas');
@@ -1704,13 +1951,13 @@ dialog .sheet { padding-bottom: 18px; }
     const x = cv.getContext('2d');
     x.fillStyle = '#c79a5f'; x.fillRect(0, 0, Wd, H2);
     x.fillStyle = '#23201c'; x.font = '700 54px Gaegu, sans-serif'; x.textBaseline = 'top';
-    x.fillText(`${playerOf(alChain).name}의 이야기`, pad2, 34);
+    x.fillText(storyTitle(alChain), pad2, 34);
     x.font = labelFont; x.fillStyle = '#3b2c18';
     x.fillText('그림 릴레이', Wd - pad2 - x.measureText('그림 릴레이').width, 52);
     let y = 130;
     for (const b of blocks) {
       x.font = labelFont; x.fillStyle = '#2a1d0c';
-      x.fillText(entryLabel(b.e), pad2 + 4, y);
+      x.fillText(entryLabel(b.e, b.s), pad2 + 4, y);
       y += 36;
       x.fillStyle = b.e.kind === 'prompt' ? '#ffd23f' : '#fffdf7';
       if (b.e.kind === 'draw') {
@@ -1727,6 +1974,9 @@ dialog .sheet { padding-bottom: 18px; }
       }
       y += 26;
     }
+    saveCanvas(cv);
+  };
+  function saveCanvas(cv) {
     cv.toBlob(async (blob) => {
       if (!blob) return toast('이미지를 만들지 못했어요');
       const name = `그림릴레이-${playerOf(alChain).name}.png`;
@@ -1739,7 +1989,7 @@ dialog .sheet { padding-bottom: 18px; }
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       toast('이미지를 저장했어요');
     }, 'image/png');
-  };
+  }
 
   /* ── 의견 보내기 ── */
   let fbKind = 'idea';

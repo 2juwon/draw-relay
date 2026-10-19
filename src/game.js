@@ -20,7 +20,10 @@
   const MAX_OPS = 4000;
   const MAX_POINTS = 30000;
 
-  const DEFAULT_SETTINGS = Object.freeze({ drawSec: 90, textSec: 40, short: false });
+  const MODES = ['normal', 'sandwich', 'secret', 'corpse'];
+  const CORPSE_PARTS = 3;           // 정교한 시체: 머리·몸통·다리
+  const STRIP_TOP = 660;            // 정교한 시체: 다음 사람에게 보여 주는 아래쪽 띠 (y 660~750)
+  const DEFAULT_SETTINGS = Object.freeze({ drawSec: 90, textSec: 40, short: false, mode: 'normal' });
   const DRAW_SECS = [60, 90, 120, 180];
   const TEXT_SECS = [30, 40, 60];
 
@@ -39,6 +42,7 @@
     if (DRAW_SECS.includes(s.drawSec)) out.drawSec = s.drawSec;
     if (TEXT_SECS.includes(s.textSec)) out.textSec = s.textSec;
     if (typeof s.short === 'boolean') out.short = s.short;
+    if (MODES.includes(s.mode)) out.mode = s.mode;
     return out;
   }
 
@@ -83,10 +87,45 @@
 
   /* 이야기 길이: 사람 수만큼(짧게면 최대 5칸). 다만 칸 수가 짝수면 마지막이 그림이 되므로 한 칸 줄여
    * 늘 '맞히기'로 끝나게 함 (한 칸을 더 붙이면 처음 쓴 사람이 자기 이야기를 맞히게 되어 답을 알고 맞히는 꼴) */
-  function stepsFor(n, short) {
+  function stepsFor(n, short, mode) {
+    if (mode === 'corpse') return CORPSE_PARTS;           // 머리 → 몸통 → 다리
     let k = short ? Math.min(n, SHORT_STEPS) : n;
-    if (k % 2 === 0) k -= 1;
+    if (mode !== 'sandwich' && k % 2 === 0) k -= 1;        // 샌드위치는 마지막 칸을 늘 맞히기로 정해 두므로 그대로
     return Math.max(3, k);
+  }
+
+  /* 칸마다 할 일
+   * 기본·비밀: 제시어 → 그림 → 맞히기 → 그림 → … → 맞히기
+   * 샌드위치:  제시어 → 그림 → 따라 그리기 → … → 맞히기 (가운데는 모두 그림)
+   * 정교한 시체: 그림(머리) → 그림(몸통) → 그림(다리) — 앞 사람 그림은 아래쪽 띠만 보임 */
+  function kindsFor(mode, steps) {
+    return Array.from({ length: steps }, (_, s) => {
+      if (mode === 'corpse') return 'draw';
+      if (mode === 'sandwich') return s === 0 ? 'prompt' : s === steps - 1 ? 'guess' : 'draw';
+      return kindOf(s);
+    });
+  }
+  function kindAt(g, step) { return g.kinds ? g.kinds[step] : kindOf(step); }
+
+  // 정교한 시체: 그림에서 아래쪽 띠(y ≥ top)에 걸친 선 조각만 남김 (채우기는 뺌)
+  function stripOf(draw, top = STRIP_TOP) {
+    const ops = [];
+    for (const o of (draw && draw.ops) || []) {
+      if (o.f) continue;
+      const p = o.p, n = p.length / 2;
+      let run = null;
+      const flush = () => { if (run && run.length) ops.push({ c: o.c, w: o.w, p: run }); run = null; };
+      for (let i = 0; i < n; i++) {
+        // 굵은 선은 띠 조금 위에서 시작해도 띠 안으로 번져 보이므로 굵기 반만큼 여유
+        const inside = p[i * 2 + 1] >= top - 32;
+        if (inside) {
+          if (!run) { run = []; if (i > 0) run.push(p[i * 2 - 2], p[i * 2 - 1]); } // 앞 점 하나로 이어지는 방향을 살림
+          run.push(p[i * 2], p[i * 2 + 1]);
+        } else if (run) { run.push(p[i * 2], p[i * 2 + 1]); flush(); }
+      }
+      flush();
+    }
+    return { ops };
   }
 
   function kindOf(step) { return step === 0 ? 'prompt' : step % 2 ? 'draw' : 'guess'; }
@@ -106,8 +145,10 @@
       v: 1, n, seed: seed >>> 0,
       players: players.map((p) => ({ name: String(p.name || '') })),
       settings: st,
-      steps: stepsFor(n, st.short),
+      mode: st.mode,
+      steps: stepsFor(n, st.short, st.mode),
       ring, pos,
+      kinds: kindsFor(st.mode, stepsFor(n, st.short, st.mode)),
       step: 0,
       phase: 'play',             // play → reveal → end
       entries: Array.from({ length: n }, () => []),   // entries[이야기][단계] = { by, kind, text | draw, auto, done }
@@ -124,12 +165,15 @@
   function taskFor(g, seat) {
     if (g.phase !== 'play' || seat < 0 || seat >= g.n) return null;
     const chain = chainOf(g, seat, g.step);
-    const kind = kindOf(g.step);
+    const kind = kindAt(g, g.step);
     const prev = g.step > 0 ? g.entries[chain][g.step - 1] : null;
     const mine = g.entries[chain][g.step] || null;
+    let pv = prev ? publicEntry(prev) : null;
+    if (pv && g.mode === 'corpse') pv = { by: pv.by, kind: 'draw', auto: pv.auto, strip: true, draw: stripOf(prev.draw) };
     return {
-      step: g.step, steps: g.steps, kind, chain,
-      prev: prev ? publicEntry(prev) : null,
+      step: g.step, steps: g.steps, kind, chain, mode: g.mode || 'normal',
+      part: g.mode === 'corpse' ? g.step : null,
+      prev: pv,
       mine: mine ? publicEntry(mine) : null,
       done: !!(mine && mine.done),
     };
@@ -147,7 +191,7 @@
     if (seat < 0 || seat >= g.n) return { error: '자리가 없어요' };
     if (!payload || payload.step !== g.step) return { error: '이미 다음 단계로 넘어갔어요' };
     const chain = chainOf(g, seat, g.step);
-    const kind = kindOf(g.step);
+    const kind = kindAt(g, g.step);
     const e = { by: seat, kind, auto: false, done: !!done };
     if (kind === 'draw') {
       const d = cleanDrawing(payload.draw);
@@ -186,7 +230,7 @@
       const chain = chainOf(g, seat, g.step);
       const cur = g.entries[chain][g.step];
       if (cur && cur.done) continue;
-      const kind = kindOf(g.step);
+      const kind = kindAt(g, g.step);
       let e;
       if (cur && (kind === 'draw' ? cur.draw && cur.draw.ops.length : cur.text)) e = { ...cur, done: true };
       else if (kind === 'prompt') e = { by: seat, kind, text: cleanText(pickWord()), auto: true, done: true };
@@ -238,7 +282,7 @@
     const done = [];
     for (let i = 0; i < g.n; i++) done.push(isDone(g, i));
     return {
-      n: g.n, steps: g.steps, step: g.step, phase: g.phase, kind: g.phase === 'play' ? kindOf(g.step) : null,
+      n: g.n, steps: g.steps, step: g.step, phase: g.phase, kind: g.phase === 'play' ? kindAt(g, g.step) : null, mode: g.mode || 'normal', kinds: g.kinds,
       settings: g.settings, players: g.players, done, reveal: g.reveal,
       // 이야기마다 맡은 사람 순서 (발표·앨범에서 '누가' 표시용 — 내용은 따로)
       order: g.phase === 'play' ? null : Array.from({ length: g.n }, (_, c) => Array.from({ length: g.steps }, (_, s) => seatOf(g, c, s))),
@@ -246,9 +290,9 @@
   }
 
   return {
-    MIN_PLAYERS, MAX_PLAYERS, SHORT_STEPS, TEXT_MAX, W, H, COLORS, SIZES, MAX_OPS, MAX_POINTS,
+    MIN_PLAYERS, MAX_PLAYERS, SHORT_STEPS, MODES, CORPSE_PARTS, STRIP_TOP, TEXT_MAX, W, H, COLORS, SIZES, MAX_OPS, MAX_POINTS,
     DEFAULT_SETTINGS, DRAW_SECS, TEXT_SECS,
-    mulberry32, stepsFor, cleanSettings, cleanText, cleanDrawing, kindOf, createGame, seatOf, chainOf, taskFor, publicEntry,
+    mulberry32, stepsFor, kindsFor, kindAt, stripOf, cleanSettings, cleanText, cleanDrawing, kindOf, createGame, seatOf, chainOf, taskFor, publicEntry,
     submit, unsubmit, isDone, doneCount, fillMissing, advance, revealNext, revealAll, isRevealed, summary,
   };
 });

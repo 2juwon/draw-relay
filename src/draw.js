@@ -182,6 +182,10 @@
       this.onChange = opts.onChange || (() => {});
       this.readOnly = false;
       this.base = null;     // 지금까지 그린 것 스냅샷 (선 그리는 중에 다시 깔기용)
+      // 비밀 모드: 그은 선이 잠깐 보였다가 사라짐 (그림은 그대로 남고 화면에서만 지움)
+      this.secret = !!opts.secret;
+      this.born = new WeakMap();
+      this.fadeRaf = 0;
       const down = (e) => this.down(e);
       const move = (e) => this.move(e);
       const up = (e) => this.up(e);
@@ -197,7 +201,33 @@
       fit(this.cv, w);
       this.redraw();
     }
-    redraw() { render(this.ctx, this.ops); this.base = null; }
+    redraw() { if (this.secret) { this.paintSecret(); return; } render(this.ctx, this.ops); this.base = null; }
+    paintSecret() {
+      const HOLD = 500, FADE = 1300;
+      const now = performance.now();
+      prepare(this.ctx);
+      let k = -1;
+      this.ops.forEach((o, i) => { if (o.clear) k = i; });
+      let alive = false;
+      for (let i = k + 1; i < this.ops.length; i++) {
+        const o = this.ops[i];
+        const t0 = this.born.get(o);
+        if (t0 == null) continue;
+        const age = now - t0;
+        if (age >= HOLD + FADE) continue;
+        alive = true;
+        this.ctx.globalAlpha = age < HOLD ? 1 : 1 - (age - HOLD) / FADE;
+        if (o.f) { // 채우기는 누른 자리에 동그라미로만 잠깐 표시
+          this.ctx.fillStyle = PALETTE[o.c] || '#000';
+          this.ctx.beginPath(); this.ctx.arc(o.x, o.y, 46, 0, Math.PI * 2); this.ctx.fill();
+          this.ctx.lineWidth = 3; this.ctx.strokeStyle = '#1d1b19'; this.ctx.stroke();
+        } else drawStroke(this.ctx, o);
+      }
+      this.ctx.globalAlpha = 1;
+      if (this.cur) drawStroke(this.ctx, this.cur);
+      cancelAnimationFrame(this.fadeRaf);
+      this.fadeRaf = alive ? requestAnimationFrame(() => this.paintSecret()) : 0;
+    }
     point(e) {
       const r = this.cv.getBoundingClientRect();
       return [Math.round(((e.clientX - r.left) / r.width) * W), Math.round(((e.clientY - r.top) / r.height) * H)];
@@ -208,11 +238,13 @@
       const [x, y] = this.point(e);
       if (this.tool === 'fill') {
         this.push({ f: 1, c: this.color, x: Math.max(0, Math.min(W, x)), y: Math.max(0, Math.min(H, y)) });
-        applyOp(this.ctx, this.ops[this.ops.length - 1]);
+        if (this.secret) this.paintSecret();
+        else applyOp(this.ctx, this.ops[this.ops.length - 1]);
         return;
       }
       try { this.cv.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
       this.cur = { c: this.tool === 'eraser' ? 0 : this.color, w: this.size, p: [x, y], id: e.pointerId };
+      if (this.secret) { this.paintSecret(); return; }
       this.base = this.ctx.getImageData(0, 0, this.cv.width, this.cv.height);
       drawStroke(this.ctx, this.cur);
     }
@@ -227,6 +259,7 @@
         if ((x - lx) * (x - lx) + (y - ly) * (y - ly) < 9) continue; // 3 이내는 건너뜀
         p.push(x, y);
       }
+      if (this.secret) { if (!this.fadeRaf) this.paintSecret(); return; }
       this.ctx.putImageData(this.base, 0, 0);
       drawStroke(this.ctx, this.cur);
     }
@@ -240,7 +273,7 @@
       delete o.id;
       this.push(o);
     }
-    push(o) { this.ops.push(o); this.redo = []; this.onChange(); }
+    push(o) { this.ops.push(o); this.redo = []; if (this.secret) { this.born.set(o, performance.now()); this.paintSecret(); } this.onChange(); }
     undo() { if (!this.ops.length) return; this.redo.push(this.ops.pop()); this.redraw(); this.onChange(); }
     again() { if (!this.redo.length) return; this.ops.push(this.redo.pop()); this.redraw(); this.onChange(); }
     clear() { if (!this.drawing().ops.length) return; this.push({ clear: 1 }); this.redraw(); }
@@ -254,6 +287,21 @@
     pointCount() { return this.drawing().ops.reduce((n, o) => n + (o.p ? o.p.length / 2 : 0), 0); }
   }
 
+  // 정교한 시체: 그림의 아래쪽 띠(y ≥ top)만 그려 보여 주기. 캔버스 높이는 띠 높이에 맞춤
+  function renderStrip(cv, ops, top, cssW) {
+    const dpr = Math.min(2, (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1);
+    const pxW = Math.round(Math.max(320, Math.min(1400, cssW * dpr)));
+    const pxH = Math.round(pxW * (H - top) / W);
+    if (cv.width !== pxW || cv.height !== pxH) { cv.width = pxW; cv.height = pxH; }
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    const k = cv.width / W;
+    ctx.setTransform(k, 0, 0, k, 0, -top * k);
+    for (const o of ops || []) if (!o.f) drawStroke(ctx, o);
+  }
+
   // 그림을 이미지로 (앨범 저장용)
   function toCanvas(ops, width) {
     const cv = document.createElement('canvas');
@@ -262,5 +310,5 @@
     return cv;
   }
 
-  return { W, H, PALETTE, SIZES, render, replay, fit, Pad, toCanvas };
+  return { W, H, PALETTE, SIZES, render, replay, fit, Pad, toCanvas, renderStrip };
 });
