@@ -1,0 +1,63 @@
+name: 서버 배포
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'src/game.js'
+      - 'src/words.js'
+      - '.github/workflows/deploy-server.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_ADMIN_KEY: ${{ secrets.ADMIN_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: 규칙 테스트
+        run: node test/game.test.js
+
+      - name: 서버 패키지 설치
+        working-directory: server
+        run: npm ci
+
+      - name: Cloudflare에 배포
+        working-directory: server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::저장소 Settings → Secrets and variables → Actions에 CLOUDFLARE_API_TOKEN과 CLOUDFLARE_ACCOUNT_ID를 넣은 뒤 다시 실행해 주세요"
+            exit 1
+          fi
+          npx wrangler deploy 2>&1 | tee deploy.log
+          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1 || true)
+          {
+            echo "### 서버 주소"
+            echo ""
+            echo "${url:-배포 기록에서 주소를 찾지 못했어요. Cloudflare 대시보드 Workers & Pages에서 draw-relay를 확인해 주세요}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 의견함 관리자 비밀번호 넣기
+        if: env.HAS_ADMIN_KEY == 'true'
+        working-directory: server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: printf '%s' "$ADMIN_KEY" | npx wrangler secret put ADMIN_KEY
+
+      - name: 비밀번호 안내
+        if: env.HAS_ADMIN_KEY != 'true'
+        run: echo "::warning::의견함을 보려면 저장소 Secrets에 ADMIN_KEY(관리자 비밀번호)를 넣고 이 작업을 다시 실행해 주세요"
